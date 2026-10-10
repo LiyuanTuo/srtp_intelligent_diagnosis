@@ -359,6 +359,29 @@ function respond(h, score = .5, issues = []) {
   h.XHR.last.onload();
 }
 
+test('result interpretation follows numeric thirds and updates on repeated analysis without changing scores', () => {
+  const h = setup();
+  h.element('audio-file').fire('change', { target: { files: [new File(['audio'], 'sample.wav')] } });
+  for (const [score, band, phrase] of [
+    [0, '较低数值区间', '你的感受依然值得'],
+    [1 / 3 - .00001, '较低数值区间', '你的感受依然值得'],
+    [1 / 3, '中间数值区间', '不是“临界诊断”'],
+    [.5, '中间数值区间', '不是“临界诊断”'],
+    [2 / 3 - .00001, '中间数值区间', '不是“临界诊断”'],
+    [2 / 3, '较高数值区间', '不能确认你患有'],
+    [1, '较高数值区间', '不能确认你患有'],
+    [.15, '较低数值区间', '你的感受依然值得'],
+  ]) {
+    respond(h, score);
+    assert.equal(h.element('result').hidden, false);
+    assert.equal(h.element('score').textContent, score.toFixed(4));
+    assert.equal(h.element('interpretation-band').textContent, band);
+    assert.ok(h.element('interpretation-message').textContent.includes(phrase));
+    const nextAction = score < 1 / 3 ? '照顾自己不需要等到状态变差' : score < 2 / 3 ? '不需要一次理清所有问题' : '不必为了得到更低的分数反复录音';
+    assert.ok(h.element('interpretation-next').textContent.includes(nextAction));
+  }
+});
+
 test('replacement cancellation, invalid files and denied permission keep original audio and result', async () => {
   let deny = false;
   const h = setup(async () => { if (deny) throw { name: 'NotAllowedError' }; return h.stream; });

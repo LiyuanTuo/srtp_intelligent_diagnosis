@@ -51,3 +51,14 @@ body:has(.usage-dialog[open]){overflow:hidden}
 .voice-workspace .preview-actions .button{min-height:40px;padding:9px 17px;font-size:12px;border-color:#80add0;color:#287bc1;background:#f7fbff}
 .voice-workspace .preview-actions .button:hover:not(:disabled){background:#eaf4fc;border-color:#287bc1}
 .voice-workspace #timer.calibrating{font-size:clamp(20px,2.4vw,28px);font-weight:600;letter-spacing:0;line-height:1.6;color:var(--blue);padding:8px 0}
+.score-interpretation{margin:28px 0 8px;padding:24px;border:1px solid #dce7f0;border-radius:12px;background:#f8fbfe;text-align:left}
+.interpretation-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.interpretation-heading h3{font-size:22px;margin:0;color:#263d53}
+.interpretation-band{font-size:12px;color:#326c99;background:#e9f2fa;border-radius:5px;padding:5px 10px}
+.score-interpretation .interpretation-lead{font-size:17px;line-height:1.7;font-weight:600;color:#304e68;margin:22px 0 10px}
+.interpretation-message,.interpretation-guidance p{font-size:14px;line-height:1.95;color:#4f6578;margin:10px 0}
+.interpretation-guidance{border-top:1px solid #dce7f0;padding-top:18px;margin-top:20px}
+.voice-workspace .result p{text-indent:2em}
+.interpretation-limit{font-size:12px;color:#647788;line-height:1.85;margin:20px 0 8px}
+.interpretation-source{display:inline-block;font-size:12px;color:#287bc1;text-underline-offset:4px;line-height:1.8;padding:6px 0}
+@media(max-width:680px){.score-interpretation{padding:20px 18px}.score-interpretation .interpretation-lead{font-size:16px}}

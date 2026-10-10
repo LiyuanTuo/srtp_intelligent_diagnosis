@@ -44,7 +44,15 @@
             <div id="score-gauge" class="score-gauge" role="img" aria-label="研究模型分数">
               <div id="score" class="score" aria-hidden="true"></div>
             </div>
-            <div class="result-notice">本次不提供抑郁风险分级或诊断结论。</div><details class="score-help"><summary>这个分数能说明什么？</summary><p>这是研究模型对本次音频的数值输出。由于类别对应关系和校准尚未确认，分数高低不能用于判断你是否患有抑郁症，也不能用来判断轻重程度。</p><p>不同录音内容、设备和音量都可能影响输出。反复录音得到不同分数，不代表心理状态发生变化。</p></details></div><section id="quality-result" class="quality-result" aria-labelledby="quality-title" hidden><h3 id="quality-title">本次录音质量提示</h3><p id="quality-summary"></p><ul id="quality-issues"></ul><p id="quality-disclaimer" class="small"></p></section><dl class="result-meta"><div><dt>音频时长</dt><dd id="result-duration"></dd></div><div><dt>分析耗时</dt><dd id="result-time"></dd></div><div><dt>模型版本</dt><dd id="result-version"></dd></div></dl><button id="again" class="button primary" type="button">开始新的评估</button></section>
+            <section class="score-interpretation" aria-labelledby="interpretation-title">
+              <div class="interpretation-heading"><h3 id="interpretation-title">结果解读</h3><span id="interpretation-band" class="interpretation-band"></span></div>
+              <h4 id="interpretation-lead" class="interpretation-lead"></h4>
+              <p id="interpretation-message" class="interpretation-message"></p>
+              <div class="interpretation-guidance"><h4 class="interpretation-lead">给自己的下一步</h4><p id="interpretation-next"></p><p>如果低落、兴趣减退或其他困扰持续存在，或已经影响日常生活，可以联系学校心理咨询中心或专业医疗人员。无论分数高低，你都可以寻求支持。</p></div>
+              <a class="interpretation-source" href="https://www.who.int/zh/news-room/fact-sheets/detail/depression" target="_blank" rel="noopener noreferrer">了解心理健康与求助建议 · 世界卫生组织 ↗</a>
+            </section>
+              <p class="interpretation-limit">本页按模型数值区间呈现不同解读，不作抑郁风险分级或诊断。录音内容、设备和音量都可能影响输出；分数变化不等于心理状态变化。</p>
+            </div><section id="quality-result" class="quality-result" aria-labelledby="quality-title" hidden><h3 id="quality-title">本次录音质量提示</h3><p id="quality-summary"></p><ul id="quality-issues"></ul></section><dl class="result-meta"><div><dt>音频时长</dt><dd id="result-duration"></dd></div><div><dt>分析耗时</dt><dd id="result-time"></dd></div><div><dt>模型版本</dt><dd id="result-version"></dd></div></dl><button id="again" class="button primary" type="button">开始新的评估</button></section>
         </div>
       </div>
       <footer class="page-footer">声音评估 · CFRAFN <span>真实记录 · 审慎解释</span></footer>

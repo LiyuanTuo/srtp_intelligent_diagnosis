@@ -274,10 +274,34 @@ async function startRecording() {
     if (!selectedFile) $('record-hint').textContent = '录音尚未开始'; updateControls();
   }
 }
+function showScoreInterpretation(score) {
+  // Equal thirds organize presentation copy only; these are not clinical cutoffs.
+  const content = score < 1 / 3 ? {
+    band: '较低数值区间',
+    lead: '看见分数，也别忽略自己的感受。',
+    message: '本次模型输出处于较低数值区间。这并不意味着你一定没有情绪困扰。如果最近感到疲惫、低落或压力，你的感受依然值得被认真对待。',
+    next: '今天可以为自己留一点休息时间：散散步、做一件喜欢的小事，或和亲近的人聊聊。照顾自己不需要等到状态变差；如果你其实并不好受，也不必因为分数较低而把感受放在一边。',
+  } : score < 2 / 3 ? {
+    band: '中间数值区间',
+    lead: '给自己一点时间，理解最近的状态。',
+    message: '本次模型输出处于中间数值区间。这不是“临界诊断”，也不代表某种严重程度。不必急着给自己贴标签，可以从最近让你感到轻松或吃力的事情开始梳理。',
+    next: '如果愿意，可以记下最近让你感到压力的事情，以及让你稍微放松的时刻，再选一件力所能及的小事去调整。不需要一次理清所有问题，也可以邀请一位信任的人陪你聊一聊。',
+  } : {
+    band: '较高数值区间',
+    lead: '先别急着下结论，你不需要独自面对担心。',
+    message: '本次模型输出处于较高数值区间。这个数值不能确认你患有抑郁症，也不代表困扰的轻重。如果看到结果让你不安，可以先放下分数，把注意力转回自己的实际感受。',
+    next: '如果这个结果让你紧张，可以先暂停查看分数，给自己一点缓冲时间。不必为了得到更低的分数反复录音。愿意的话，和信任的人说说你此刻的担心；比起这个数字，你最近的真实感受更值得关注。',
+  };
+  $('interpretation-band').textContent = content.band;
+  $('interpretation-lead').textContent = content.lead;
+  $('interpretation-message').textContent = content.message;
+  $('interpretation-next').textContent = content.next;
+}
 function showResult(data) {
   if (!Number.isFinite(data.score) || data.score < 0 || data.score > 1 || !data.model_version || !Number.isFinite(data.audio_duration_seconds) || !Number.isFinite(data.analysis_seconds)) throw new Error('服务返回的数据不完整，请联系项目维护者。');
   $('score').textContent = data.score.toFixed(4);
   LiquidGauge.render($('score-gauge'), data.score);
+  showScoreInterpretation(data.score);
   $('result-duration').textContent = `${data.audio_duration_seconds.toFixed(1)} 秒`;
   $('result-time').textContent = `${data.analysis_seconds.toFixed(2)} 秒`;
   $('result-version').textContent = data.model_version;
@@ -289,7 +313,6 @@ function showResult(data) {
   $('quality-result').classList.toggle('attention', attention);
   $('quality-result').style.setProperty('order', attention ? '1' : '3');
   $('quality-summary').textContent = attention ? '本次音频有以下提示，建议先试听，必要时重新录制。' : quality?.summary || '录音前的环境检查已完成，请以试听为准。';
-  $('quality-disclaimer').textContent = selectedQuality.length ? '包含录音前的环境声检查、录音过程提示和提交后的音量检查；仅供录音操作参考。' : quality?.disclaimer || '质量提示仅供录音操作参考。';
   const observations = [...selectedQuality.map(item => item.text), ...issues.map(issue => issue.message)].filter(Boolean);
   [...new Set(observations)].forEach(text => { const li = document.createElement('li'); li.textContent = text; $('quality-issues').append(li); });
   $('result').hidden = false; message('分析完成。结果仅保留在当前页面。'); step(3);

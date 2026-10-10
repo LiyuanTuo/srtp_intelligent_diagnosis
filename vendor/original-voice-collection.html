@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抑郁症语音筛查平台（SRTP测试版） - 语音采集</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+        }
+        
+        /* 应用容器 */
+        .app-container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+        
+        /* 顶部导航栏 */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo img {
+            height: 32px;
+            margin-right: 12px;
+        }
+        
+        .logo h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-right: 12px;
+        }
+        
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .user-name {
+            margin-right: 16px;
+            font-weight: 500;
+        }
+        
+        /* 侧边栏导航 */
+        .sidebar {
+            width: 240px;
+            background-color: white;
+            padding-top: 80px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
+        }
+        
+        .nav-list {
+            list-style: none;
+        }
+        
+        .nav-item {
+            margin-bottom: 5px;
+        }
+        
+        .nav-item a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #34495e;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item.active a {
+            background-color: #f8f9fa;
+            border-left-color: #3498db;
+            color: #3498db;
+            font-weight: 500;
+        }
+        
+        .nav-item a .icon {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            padding: 100px 24px 24px 270px;
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2c3e50;
+        }
+        
+        .page-description {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 24px;
+        }
+        
+        /* 语音采集容器 */
+        .voice-collection-container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+        }
+        
+        /* 语料库预览 */
+        .corpus-preview {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .corpus-preview h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2c3e50;
+        }
+        
+        .corpus-content {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .reading-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #34495e;
+        }
+        
+        /* 录音控制区域 */
+        .recording-controls {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .recording-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-right: 8px;
+        }
+        
+        .status-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .controls-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid #3498db;
+            color: #3498db;
+        }
+        
+        .btn-outline:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .recording-progress {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background-color: #3498db;
+            width: 0;
+            transition: width 0.3s linear;
+        }
+        
+        .time-display {
+            font-size: 14px;
+            color: #7f8c8d;
+            min-width: 60px;
+        }
+        
+        /* 录音记录显示区 */
+        .recording-history {
+            margin-bottom: 24px;
+        }
+        
+        .recording-history h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2c3e50;
+        }
+        
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .history-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .recording-date {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .recording-duration {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .history-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .btn-text {
+            background-color: transparent;
+            border: none;
+            color: #3498db;
+            padding: 0;
+        }
+        
+        .btn-text:hover {
+            text-decoration: underline;
+        }
+        
+        /* 帮助区域 */
+        .help-section {
+            margin-top: 24px;
+        }
+        
+        .help-btn {
+            background-color: #e8f4fd;
+            color: #3498db;
+            border: 1px solid #3498db;
+        }
+        
+        .help-btn:hover {
+            background-color: #d6eaf8;
+        }
+        
+        .help-content {
+            display: none;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 16px;
+        }
+        
+        .help-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2c3e50;
+        }
+        
+        .help-content ul {
+            list-style-type: disc;
+            padding-left: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .help-content li {
+            font-size: 14px;
+            color: #34495e;
+            margin-bottom: 8px;
+        }
+        
+        .help-content p {
+            font-size: 14px;
+            color: #34495e;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        
+        .btn-close {
+            background-color: #f8f9fa;
+            border: 1px solid #bdc3c7;
+            color: #7f8c8d;
+        }
+        
+        .btn-close:hover {
+            background-color: #ecf0f1;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+            
+            .nav-item a span {
+                display: none;
+            }
+            
+            .nav-item a .icon {
+                margin-right: 0;
+            }
+            
+            .main-content {
+                padding-left: 95px;
+            }
+            
+            .logo h1 {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .main-content {
+                padding: 70px 16px 16px 85px;
+            }
+            
+            .controls-buttons {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航栏 -->
+        <header class="app-header">
+            <div class="logo">
+                <img src="assets\images\logo.jpg" alt="抑郁症语音筛查平台（SRTP测试版）">
+                <h1>抑郁症语音筛查平台（SRTP测试版）</h1>
+            </div>
+            
+            <div class="user-info">
+                <div class="avatar" id="user-avatar">
+                    <img src="assets\images\default-avatar.png" alt="用户头像">
+                </div>
+                <span class="user-name" id="user-name">苟*金</span>
+                <button class="btn btn-outline" id="logout-btn">退出</button>
+            </div>
+        </header>
+        
+        <!-- 侧边栏导航 -->
+        <nav class="sidebar">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="dashboard.html">
+                        <i class="icon home"></i>
+                        <span>主页</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="community.html">
+                        <i class="icon community"></i>
+                        <span>社区圈</span>
+                    </a>
+                </li>
+ 
+                <li class="nav-item active">
+                    <a href="voice-collection.html">
+                        <i class="icon voice"></i>
+                        <span>语音采集</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="wearables.html">
+                        <i class="icon wearables"></i>
+                        <span>医生预约（中大医院）</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="profile.html">
+                        <i class="icon profile"></i>
+                        <span>个人中心</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <section class="voice-collection-container">
+                <h1 class="page-title">语音采集</h1>
+                <p class="page-description">通过语音分析，帮助您了解自己的情绪状态</p>
+                
+                <div class="collection-content">
+                    <!-- 语料库预览 -->
+                    <div class="corpus-preview">
+                        <h2>语料库预览</h2>
+                        <div class="corpus-content">
+                            <p>请朗读以下内容：</p>
+                            <p class="reading-text">今天天气很好，我感到心情愉快。生活中有许多美好的事物值得我们去发现和珍惜。保持积极的心态，面对每一天的挑战。</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline" id="change-text-btn">换一篇</button>
+                    </div>
+                    
+                    <!-- 录音控制区域 -->
+                    <div class="recording-controls">
+                        <div class="recording-status">
+                            <span class="status-text">当前状态：</span>
+                            <span class="status-value" id="recording-status">准备就绪</span>
+                        </div>
+                        
+                        <div class="controls-buttons">
+                            <button class="btn btn-primary" id="start-recording">开始录音</button>
+                            <button class="btn btn-outline" id="re-record" disabled>重录</button>
+                            <button class="btn btn-success" id="upload-recording" disabled>上传录音</button>
+                            <button class="btn btn-danger" id="cancel-recording" disabled>结束/取消</button>
+                        </div>
+                        
+                        <div class="recording-progress">
+                            <div class="progress-bar">
+                                <div class="progress" id="recording-progress"></div>
+                            </div>
+                            <span class="time-display">00:00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 录音记录显示区 -->
+                    <div class="recording-history">
+                        <h2>我的录音</h2>
+                        <div class="history-list">
+                            <div class="history-item">
+                                <div class="history-info">
+                                    <span class="recording-date">2023-10-15</span>
+                                    <span class="recording-duration">02:30</span>
+                                </div>
+                                <div class="history-actions">
+                                    <button class="btn btn-sm btn-outline play-btn">
+                                        <i class="icon play">▶</i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline delete-btn">
+                                        <i class="icon delete">🗑️</i>
+                                    </button>
+                                    <button class="btn btn-sm btn-text view-btn">查看分析</button>
+                                </div>
+                            </div>
+                            <!-- 更多历史记录项 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 帮助区域 -->
+                <div class="help-section">
+                    <button class="btn btn-sm btn-help" id="help-btn">
+                        <i class="icon help">❓</i> 帮助
+                    </button>
+                    
+                    <div class="help-content" id="help-content">
+                        <h3>语音采集注意事项</h3>
+                        <ul>
+                            <li>请在安静的环境中进行录音</li>
+                            <li>录音时保持麦克风距离嘴巴约20cm</li>
+                            <li>朗读时语速适中，尽量清晰</li>
+                            <li>录音时间建议在1-3分钟之间</li>
+                        </ul>
+                        
+                        <h3>常见问题</h3>
+                        <p>如果录音失败，请检查麦克风是否正常工作，或尝试更换语料重新录音。</p>
+                        
+                        <button class="btn btn-sm btn-close" id="close-help">关闭</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script>
+        // 初始化语音采集界面
+        function initVoiceCollection() {
+            // 检查浏览器是否支持Web Audio API
+            if (!window.AudioContext) {
+                alert('您的浏览器不支持语音录制功能，请升级到最新版本的浏览器。');
+                return;
+            }
+            
+            // 初始化录音状态
+            const statusElement = document.getElementById('recording-status');
+            if (statusElement) {
+                statusElement.textContent = '准备就绪';
+            }
+        }
+
+        // 设置录音按钮事件
+        function setupRecordingButtons() {
+            const startBtn = document.getElementById('start-recording');
+            const reRecordBtn = document.getElementById('re-record');
+            const uploadBtn = document.getElementById('upload-recording');
+            const cancelBtn = document.getElementById('cancel-recording');
+            const progressBar = document.getElementById('recording-progress');
+            const statusElement = document.getElementById('recording-status');
+            
+            let isRecording = false;
+            let audioContext;
+            let mediaRecorder;
+            let audioChunks = [];
+            
+            if (startBtn) {
+                startBtn.addEventListener('click', function() {
+                    if (isRecording) return;
+                    
+                    // 请求麦克风权限
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function(stream) {
+                            audioContext = new AudioContext();
+                            mediaRecorder = new MediaRecorder(stream);
+                            
+                            mediaRecorder.ondataavailable = function(e) {
+                                audioChunks.push(e.data);
+                            };
+                            
+                            mediaRecorder.onstop = function() {
+                                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                                const audioUrl = URL.createObjectURL(audioBlob);
+                                
+                                // 创建音频播放器
+                                const audio = new Audio(audioUrl);
+                                // 可以在这里添加音频播放功能
+                                
+                                // 更新UI状态
+                                statusElement.textContent = '录音完成';
+                                reRecordBtn.disabled = false;
+                                uploadBtn.disabled = false;
+                                cancelBtn.disabled = true;
+                            };
+                            
+                            mediaRecorder.start();
+                            isRecording = true;
+                            
+                            // 更新UI状态
+                            statusElement.textContent = '正在录音...';
+                            startBtn.disabled = true;
+                            reRecordBtn.disabled = false;
+                            uploadBtn.disabled = true;
+                            cancelBtn.disabled = false;
+                            
+                            // 更新进度条
+                            updateRecordingProgress(progressBar, mediaRecorder);
+                        })
+                        .catch(function(err) {
+                            console.error('无法访问麦克风:', err);
+                            statusElement.textContent = '麦克风访问失败';
+                        });
+                });
+            }
+            
+            if (reRecordBtn) {
+                reRecordBtn.addEventListener('click', function() {
+                    if (!isRecording) {
+                        // 重置录音状态
+                        audioChunks = [];
+                        statusElement.textContent = '准备就绪';
+                        reRecordBtn.disabled = true;
+                        uploadBtn.disabled = true;
+                        cancelBtn.disabled = true;
+                        startBtn.disabled = false;
+                        progressBar.style.width = '0%';
+                    }
+                });
+            }
+            
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', function() {
+                    if (audioChunks.length > 0) {
+                        // 创建音频Blob
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        
+                        // 模拟上传到服务器
+                        uploadAudioToServer(audioBlob)
+                            .then(function(response) {
+                                alert('语音上传成功，分析结果即将显示！');
+                                window.location.href = 'voice-analysis.html';
+                            })
+                            .catch(function(error) {
+                                console.error('上传失败:', error);
+                                alert('语音上传失败，请重试');
+                            });
+                    }
+                });
+            }
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    if (mediaRecorder) {
+                        mediaRecorder.stop();
+                        isRecording = false;
+                    }
+                });
+            }
+            
+            // 更新录音进度条
+            function updateRecordingProgress(progressElement, recorder) {
+                let startTime = Date.now();
+                
+                const updateInterval = setInterval(function() {
+                    if (!isRecording) {
+                        clearInterval(updateInterval);
+                        return;
+                    }
+                    
+                    const elapsedTime = Date.now() - startTime;
+                    const progressPercentage = Math.min(100, (elapsedTime / 180000) * 100); // 3分钟限制
+                    progressElement.style.width = progressPercentage + '%';
+                    
+                    // 更新时间显示
+                    const timeDisplay = document.querySelector('.time-display');
+                    if (timeDisplay) {
+                        const minutes = Math.floor(elapsedTime / 60000);
+                        const seconds = Math.floor((elapsedTime % 60000) / 1000);
+                        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 1000);
+            }
+            
+            // 模拟上传音频到服务器
+            function uploadAudioToServer(blob) {
+                return new Promise(function(resolve, reject) {
+                    // 实际应用中，这里应该发送到真实服务器
+                    setTimeout(function() {
+                        resolve({ success: true, message: '上传成功' });
+                    }, 1500);
+                });
+            }
+        }
+
+        // 设置帮助按钮事件
+        function setupHelpButton() {
+            const helpBtn = document.getElementById('help-btn');
+            const helpContent = document.getElementById('help-content');
+            
+            if (helpBtn && helpContent) {
+                helpBtn.addEventListener('click', function() {
+                    helpContent.style.display = helpContent.style.display === 'block' ? 'none' : 'block';
+                });
+                
+                const closeBtn = document.getElementById('close-help');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        helpContent.style.display = 'none';
+                    });
+                }
+            }
+        }
+
+        // 设置历史录音项事件
+        function setupRecordingHistory() {
+            const playButtons = document.querySelectorAll('.play-btn');
+            const deleteButtons = document.querySelectorAll('.delete-btn');
+            const viewButtons = document.querySelectorAll('.view-btn');
+            
+            playButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    // 播放录音
+                    console.log('播放录音');
+                });
+            });
+            
+            deleteButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    // 删除录音
+                    if (confirm('确定要删除这条录音吗？')) {
+                        console.log('删除录音');
+                        // 移除UI元素
+                        this.closest('.history-item').remove();
+                    }
+                });
+            });
+            
+            viewButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    // 查看分析结果
+                    window.location.href = 'voice-analysis.html';
+                });
+            });
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化语音采集界面
+            initVoiceCollection();
+            
+            // 设置录音按钮事件
+            setupRecordingButtons();
+            
+            // 设置帮助按钮事件
+            setupHelpButton();
+            
+            // 设置历史录音项事件
+            setupRecordingHistory();
+            
+            // 退出按钮
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                window.location.href = 'login.html';
+            });
+            
+            // 导航项点击事件
+            document.querySelectorAll('.nav-item a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelector('.nav-item.active').classList.remove('active');
+                    this.parentElement.classList.add('active');
+                    
+                    // 跳转到相应的页面
+                    window.location.href = this.getAttribute('href');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

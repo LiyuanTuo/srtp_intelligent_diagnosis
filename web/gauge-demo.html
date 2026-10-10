@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>声语 · 水球动画演示</title>
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/gauge-demo.css">
+  <script src="/liquid-gauge.js" defer></script><script src="/gauge-demo.js" defer></script>
+</head>
+<body class="gauge-demo">
+  <main class="demo-page">
+    <header class="demo-heading"><div><div class="eyebrow">声语 / VISUAL DEMO</div><h1>拖一拖，看看水球的变化</h1><p>以下为交互演示数值，不是音频分析结果。</p></div><a href="/">返回声音评估 →</a></header>
+    <section class="card demo-interactive" aria-labelledby="demo-title">
+      <div id="demo-gauge" class="score-gauge" role="img" aria-label="演示分数 0.5000"></div>
+      <div class="demo-controls"><h2 id="demo-title">自由调整分数</h2><p>数字与外圈同色，浅灰色实心圆衬底，边缘保留水波。</p>
+        <div class="slider-label"><label for="demo-score">拖动滑块</label><output id="demo-value" for="demo-score">0.5000</output></div>
+        <input id="demo-score" type="range" min="0" max="1" step="0.0001" value="0.5" aria-label="演示分数">
+        <div class="slider-scale"><span>0 · 绿</span><span>0.5 · 黄</span><span>1 · 红</span></div>
+        <div class="demo-presets"><button class="button ghost" data-value="0.15" type="button">低分 0.15</button><button class="button ghost" data-value="0.5" type="button">中间 0.50</button><button class="button ghost" data-value="0.85" type="button">高分 0.85</button></div>
+        <p class="small">也可以聚焦滑块，使用方向键微调；Home / End 查看空球和满球。</p>
+      </div>
+    </section>
+    <div class="demo-examples">
+      <section class="card"><h2>低分示例</h2><div id="demo-low" class="score-gauge" role="img" aria-label="演示分数 0.1500"></div></section>
+      <section class="card"><h2>中间示例</h2><div id="demo-mid" class="score-gauge" role="img" aria-label="演示分数 0.5000"></div></section>
+      <section class="card"><h2>高分示例</h2><div id="demo-high" class="score-gauge" role="img" aria-label="演示分数 0.8500"></div></section>
+    </div>
+  </main>
+</body>
+</html>

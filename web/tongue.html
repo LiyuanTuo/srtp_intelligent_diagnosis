@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#287bc1">
+  <title>声语 · 舌像采集</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/tongue.css">
+  <script src="/tongue-quality.js" defer></script>
+  <script src="/tongue.js" defer></script>
+</head>
+<body>
+  <!-- Original schematic illustrations; capture references and attribution: SOURCES.md. -->
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="tongue-example" viewBox="0 0 160 112">
+      <path d="M43 10v25c0 43 14 68 37 68s37-25 37-68V10" fill="#f9e9e3" stroke="#dfc8bf" stroke-width="2"/>
+      <path d="M73 18l-4 17q11 8 22 0l-4-17" fill="none" stroke="#d4b8ae" stroke-width="2" stroke-linecap="round"/>
+      <ellipse cx="80" cy="61" rx="29" ry="16" fill="#6d4e50"/>
+      <path d="M52 59q28-25 56 0M52 61q28 24 56 0" fill="none" stroke="#cc9494" stroke-width="4"/>
+      <path d="M63 60q17-7 34 0v18q0 20-17 20T63 78Z" fill="#df9caa" stroke="#c88597" stroke-width="2"/>
+      <path d="M80 63v22" fill="none" stroke="#c88597" stroke-width="1.5" stroke-linecap="round"/>
+    </symbol>
+  </defs></svg>
+  <header class="header">
+    <a class="brand" href="/" aria-label="声语首页"><span class="brand-icon" aria-hidden="true">◖</span><span>声语 <small>SRTP RESEARCH</small></span></a>
+    <span class="study-badge">研究演示版</span>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="评估方式">
+      <div class="nav-label">评估工作台</div>
+      <a class="nav-item" href="/"><span aria-hidden="true">◉</span> 声音评估</a>
+      <a class="nav-item active" href="/tongue.html" aria-current="page"><span aria-hidden="true">▧</span> 舌像采集 <span class="nav-dot"></span></a>
+    </aside>
+    <main class="tongue-main">
+      <div class="page-heading"><div><div class="eyebrow">TONGUE CAPTURE / 02</div><h1>拍好一张舌像</h1><p>跟着指引，让舌面看得清、拍得全。</p></div><span class="local-badge"><span></span> 照片仅在本页处理</span></div>
+      <ol class="steps" aria-label="舌像采集进度"><li id="tongue-step-1" class="current" aria-current="step"><span>01</span> 拍摄准备</li><li id="tongue-step-2"><span>02</span> 对齐拍照</li><li id="tongue-step-3"><span>03</span> 检查照片</li></ol>
+      <div class="tongue-workspace">
+        <section class="card tongue-guidance" aria-labelledby="tongue-guide-title">
+          <div class="section-kicker">开始之前</div>
+          <h2 id="tongue-guide-title">三个细节，拍得更清楚</h2>
+          <p class="muted">光线均匀、镜头稳定，让舌面与边缘完整入镜。</p>
+          <details id="tongue-guide" class="guide-details">
+            <summary>查看拍摄建议与照片示意</summary>
+            <div class="preparation">
+              <ol class="tips"><li><span>01</span><div><strong>找一处柔和、均匀的白光</strong><p>面向光源，避免一侧亮、一侧暗。关闭美颜、滤镜与闪光灯。</p></div></li><li><span>02</span><div><strong>镜头正对嘴部，保持稳定</strong><p>擦净镜头，调整距离，让舌面占据引导框；不要为了填满轮廓而用力伸舌。</p></div></li><li><span>03</span><div><strong>自然伸舌，短暂保持</strong><p>张口放松，让舌尖和两侧露出。对齐后点击拍照；不舒服就收回、休息后重拍。</p></div></li></ol>
+              <div class="gentle-note"><span aria-hidden="true">ⓘ</span><p>轮廓只帮助摆放位置，不要求舌形与它完全一致。</p></div>
+            </div>
+            <section class="examples-card" aria-labelledby="tongue-examples-title">
+              <div class="card-heading"><h3 id="tongue-examples-title">什么样的照片更合适？</h3><span class="tag">示意图</span></div>
+              <div class="example-grid">
+                <figure class="example good"><div><svg aria-hidden="true"><use href="#tongue-example"/></svg><span>✓</span></div><figcaption><strong>完整 · 清楚</strong><small>舌面与边缘都看得见</small></figcaption></figure>
+                <figure class="example dark"><div><svg aria-hidden="true"><use href="#tongue-example"/></svg><span>×</span></div><figcaption><strong>光线太暗</strong><small>面向光源再拍</small></figcaption></figure>
+                <figure class="example blurry"><div><svg aria-hidden="true"><use href="#tongue-example"/></svg><span>×</span></div><figcaption><strong>画面模糊</strong><small>稳住设备，等待对焦</small></figcaption></figure>
+                <figure class="example cropped"><div><svg aria-hidden="true"><use href="#tongue-example"/></svg><span>×</span></div><figcaption><strong>舌尖出框</strong><small>稍微拉远，留出边缘</small></figcaption></figure>
+              </div>
+              <p class="small">示意图只说明拍摄方式，不代表健康或疾病类型。</p>
+            </section>
+          </details>
+        </section>
+        <section class="card capture-card" aria-labelledby="capture-title">
+          <div class="card-heading"><h2 id="capture-title">让舌头完整入框</h2><span id="camera-state" class="tag">相机未开启</span></div>
+          <p id="camera-instruction" class="capture-instruction">先调整光线，再开启相机。准备好后再伸舌。</p>
+          <div id="viewfinder" class="viewfinder">
+            <div id="camera-placeholder" class="camera-placeholder">
+              <svg viewBox="0 0 640 480" aria-hidden="true"><path d="M173-30v125q0 285 147 300 147-15 147-300V-30" fill="#e7eef4" stroke="#d6e2ec" stroke-width="3"/><path d="M300 95l-14 50q34 19 68 0l-14-50" fill="none" stroke="#bacddd" stroke-width="3" stroke-linecap="round"/><ellipse cx="320" cy="209" rx="87" ry="38" fill="#b8cbd9"/><path d="M247 205q73-52 146 0" fill="none" stroke="#9fb6c9" stroke-width="5"/><path d="M266 217q54-22 108 0v68q0 71-54 71t-54-71Z" fill="#d8b4c0" stroke="#c49dad" stroke-width="3"/><path d="M320 230v87" stroke="#c49dad" stroke-width="2" stroke-linecap="round"/></svg>
+              <span class="illustration-label">姿势示意 · 非真实舌像</span>
+            </div>
+            <video id="camera-video" autoplay muted playsinline hidden aria-label="相机实时预览"></video>
+            <img id="tongue-photo" hidden alt="本次舌像，请检查舌面和边缘是否清晰完整">
+            <svg id="alignment-guide" class="alignment-guide" viewBox="0 0 640 480" aria-hidden="true">
+              <path d="M218 172h-28v28m232-28h28v28M218 384h-28v-28m232 28h28v-28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M259 210q61-24 122 0v78q0 76-61 76t-61-76Z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="9 7"/>
+              <path d="M320 188v-18m0 213v18" stroke="currentColor" stroke-width="2"/>
+              <text x="320" y="432" text-anchor="middle" fill="currentColor" stroke="none" font-size="17">舌尖、两侧边缘都留在画面内</text>
+            </svg>
+            <div id="countdown" class="countdown" role="status" aria-live="assertive" hidden></div>
+            <span id="preview-label" class="preview-label" hidden>前置镜像预览</span>
+          </div>
+          <div id="live-hint" class="capture-hint" role="status" aria-live="polite"><span aria-hidden="true">☼</span><span id="light-hint">面向柔和白光，避开背光和直射强光。</span></div>
+          <div id="camera-controls" class="camera-controls">
+            <button id="open-camera" class="button primary" type="button">开启相机</button>
+            <button id="take-photo" class="button primary" type="button" hidden>3 秒后拍照</button>
+            <button id="switch-camera" class="button ghost" type="button" hidden>切换前 / 后置</button>
+            <button id="close-camera" class="text-button" type="button" hidden>关闭相机</button>
+          </div>
+          <div id="import-controls" class="import-controls"><span class="photo-choice-separator">或是</span><button id="choose-photo" class="button ghost" type="button"><svg class="folder-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 7V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v1"/><path d="M3 7h6l2 2h10a1 1 0 0 1 1 1.2l-2 9a1 1 0 0 1-1 .8H5a2 2 0 0 1-2-2V7Z"/></svg><span>从相册选择</span></button><input id="photo-file" type="file" accept="image/jpeg,image/png,image/webp" hidden><span class="small">JPG / PNG / WebP · ≤ 15 MB</span></div>
+          <div id="tongue-message" class="message" role="status" aria-live="polite" hidden></div>
+          <section id="photo-review" class="photo-review" hidden aria-labelledby="review-title" tabindex="-1">
+            <div class="review-heading"><h3 id="review-title">拍好了，再看一眼</h3><button id="enlarge-photo" class="text-button" type="button">放大检查 ↗</button></div>
+            <p id="photo-meta" class="small"></p>
+            <p id="photo-quality" class="quality-note"></p>
+            <fieldset id="review-checks"><legend>请对照照片，逐项确认</legend>
+              <label><input id="check-complete" type="checkbox">舌尖和两侧边缘完整，没有被嘴唇遮住</label>
+              <label><input id="check-sharp" type="checkbox">舌面纹理清楚，没有模糊或晃动重影</label>
+              <label><input id="check-light" type="checkbox">光线均匀，没有明显偏色、暗影或大片反光</label>
+            </fieldset>
+            <div class="review-actions"><button id="retake-photo" class="button ghost" type="button">重新拍摄 / 选择</button><button id="confirm-photo" class="button primary" type="button" disabled>确认使用这张</button></div>
+          </section>
+          <section id="photo-complete" class="photo-complete" hidden aria-labelledby="complete-title" tabindex="-1"><span class="complete-mark" aria-hidden="true">✓</span><div><h3 id="complete-title">本次舌像已保留</h3><p>照片留在当前页面，离开或刷新后清除。可下载到本机保存。</p></div><a id="download-photo" class="button primary" download="tongue.jpg">下载照片</a><button id="new-photo" class="text-button" type="button">重新采集</button></section>
+        </section>
+      </div>
+      <details class="capture-sources"><summary>设计与技术参考</summary><p>舌形引导框思路：Segawa 等（2021），<a href="https://doi.org/10.3389/fmedt.2021.760542" target="_blank" rel="noopener noreferrer">标准化舌像采集研究</a>。浏览器拍照 API 参考：<a href="https://github.com/webrtc/samples/tree/gh-pages/src/content/getusermedia/canvas" target="_blank" rel="noopener noreferrer">WebRTC samples · getUserMedia to canvas</a>（BSD-3-Clause）。本页布局、示意图、倒计时与人工检查流程为本项目实现。</p><p>光线提示是画面亮度的粗略估计，未进行舌体识别、自动清晰度判定或医学质量验证。完整调研与引用范围见项目 SOURCES.md。</p></details>
+    </main>
+  </div>
+  <dialog id="photo-dialog" class="photo-dialog" aria-label="放大检查舌像"><div><strong>检查舌面纹理和边缘</strong><button id="close-photo-dialog" class="button ghost" type="button" autofocus>关闭</button></div><img id="large-photo" alt="本次舌像放大预览"><p class="small">确认没有模糊、遮挡或大片反光，再关闭并勾选检查项。</p></dialog>
+</body>
+</html>

@@ -1,0 +1,54 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Local caches, test reports and build output
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+test-results/
+playwright-report/
+node_modules/
+/build/
+/dist/
+*.log
+
+# Downloadable large model weights and incomplete downloads
+# Keep the CFRAFN checkpoint, feature files and PCA parameters in Git.
+/models/vggish*.pth
+/models/*.download
+
+# Local screenshots, presentation exports and recordings
+/artifacts/
+/recordings/
+/uploads/
+/tmp/
+/temp/
+/recording.*
+
+# Local configuration and credentials (templates may be committed)
+.env
+.env.*
+!.env.example
+!.env.sample
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Editor and operating-system files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini

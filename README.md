@@ -31,6 +31,8 @@ $env:PYTHONUTF8 = '1'
 
 CFRAFN 权重约 2 MB，随项目保留；VGGish 权重约 289 MB，不加入 Git，下载脚本会校验 SHA-256。模型启动只读取本地文件，不自动访问网络。
 
+Render 上修复“模型尚未就绪”、部署到现有服务及验收步骤见 [DEPLOY.md](DEPLOY.md)。
+
 默认使用 `imageio-ffmpeg` 随包提供的 FFmpeg。需要指定二进制时设置 `FFMPEG_PATH`。openSMILE 若遇到中文路径，程序会把配置复制到系统临时目录并在服务关闭时清理；若系统临时目录也包含非 ASCII 字符，可将 TMP/TEMP 指向可写的 ASCII 路径。
 
 ## 手机联调

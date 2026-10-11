@@ -23,6 +23,7 @@ async def lifespan(app):
     await run_in_threadpool(engine.load)
     if not engine.ready:
         logger.error("Model initialization failed: %s", engine.error)
+        raise RuntimeError(f"Model initialization failed: {engine.error}")
     try:
         yield
     finally:
@@ -65,6 +66,13 @@ def health():
         "message": "研究模型已就绪；类别解释待确认。" if ready else "服务未就绪，请检查模型依赖、权重及 FFmpeg。",
         "limits": {"max_seconds": 180, "min_seconds": 2, "max_bytes": MAX_BYTES},
     }
+
+
+@app.get("/api/ready", include_in_schema=False)
+def readiness():
+    ready = engine.ready and bool(ffmpeg_path())
+    return JSONResponse({"status": "ready" if ready else "unavailable"},
+                        status_code=200 if ready else 503)
 
 
 def analyze_sync(content, suffix):

@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from backend import app as module
 
@@ -61,3 +62,23 @@ def test_health_does_not_claim_ready_when_decoder_is_missing(monkeypatch, tmp_pa
     response = client.get("/api/health")
     assert response.json()["decoder_ready"] is False
     assert response.json()["status"] == "unavailable"
+
+
+def test_readiness_requires_model_and_decoder(monkeypatch, tmp_path):
+    monkeypatch.setattr(module.engine, "ready", False)
+    assert client.get("/api/ready").status_code == 503
+    monkeypatch.setattr(module.engine, "ready", True)
+    assert client.get("/api/ready").status_code == 200
+    monkeypatch.setenv("FFMPEG_PATH", str(tmp_path / "missing-ffmpeg.exe"))
+    assert client.get("/api/ready").status_code == 503
+
+
+def test_startup_fails_if_model_does_not_load(monkeypatch):
+    def fail_load():
+        module.engine.ready = False
+        module.engine.error = "deliberate model load failure"
+
+    monkeypatch.setattr(module.engine, "load", fail_load)
+    with pytest.raises(RuntimeError, match="Model initialization failed: deliberate model load failure"):
+        with TestClient(module.app):
+            pass

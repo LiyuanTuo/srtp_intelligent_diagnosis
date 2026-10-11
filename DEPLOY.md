@@ -13,7 +13,7 @@
 ## 从 GitHub 部署
 
 1. 将本次修改（包括 `Dockerfile`、`.dockerignore`、`render.yaml`、`requirements.txt`、`backend/app.py`）提交并推送到项目 GitHub 仓库。不要提交 `.venv`、本地录音、`.env`、证书或 `models/vggish-10086976.pth`。
-2. 开通 Render 账号并连接该 GitHub 仓库。在 Render Dashboard 选择 **New → Blueprint**，选择仓库和 `main` 分支，让 Render 读取根目录的 `render.yaml`。检查创建预览中的服务规格和费用后确认创建。
+2. 开通 Render 账号后，打开 [这个项目的 Render 部署入口](https://render.com/deploy?repo=https://github.com/LiyuanTuo/srtp_intelligent_diagnosis)。它会读取公开仓库根目录的 `render.yaml`。检查创建预览中的新加坡地区、单实例、`1c-2g` 规格和费用后确认创建。也可在 Render Dashboard 选择 **New → Blueprint**，连接 `LiyuanTuo/srtp_intelligent_diagnosis` 的 `main` 分支。
 3. 等待容器构建。构建会安装 CPU PyTorch 并下载约 289 MB 的 VGGish 权重，首次构建可能需要数分钟。服务启动后，`/api/ready` 只有在模型和解码器都可用时才返回 HTTP 200；否则返回 503，Render 不会把失败实例当作可用服务。
 4. 从 Render 服务页取得实际分配的 `https://…onrender.com` 地址。打开首页与 `/tongue.html`，检查浏览器麦克风和相机权限；访问 `/api/health`，确认 `status` 为 `ready`。用非敏感测试录音提交一次，确认分析结果显示。手机上也应通过 HTTPS 真机检查。
 
@@ -23,7 +23,7 @@
 
 ## 更新与排查
 
-- 向连接的 GitHub 分支推送新提交会触发重新部署。先看 Render 的构建日志、运行日志和 `/api/health`；模型加载失败时 `/api/ready` 为 503。
+- 为避免短期演示期间由代码推送触发额外构建，配置关闭自动部署。需要更新时，在 Render 服务的 Deploys 页面手动部署。先看构建日志、运行日志和 `/api/health`；模型加载失败时 `/api/ready` 为 503。
 - 若构建阶段无法下载 VGGish 权重，检查上游下载地址与 SHA-256；不要绕过校验。
 - 若资源不足或发生重启，检查 Render 的内存指标，再决定是否升级规格。不要增加 Uvicorn worker 数；每个 worker 都会重复加载模型。
 - 默认未保存用户音频和结果，容器文件系统是临时的。服务器访问日志已在 Uvicorn 关闭；仍应检查托管平台的日志及项目隐私说明是否满足你们的研究要求。

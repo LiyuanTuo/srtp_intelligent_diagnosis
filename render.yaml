@@ -4,6 +4,8 @@ services:
     runtime: docker
     region: singapore
     plan: 1c-2g
+    numInstances: 1
+    autoDeployTrigger: off
     healthCheckPath: /api/ready
     envVars:
       - key: PYTHONUTF8

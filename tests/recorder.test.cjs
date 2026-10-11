@@ -78,6 +78,21 @@ function completeEnvironmentCheck(h) {
   h.setNow(3000); [...h.timeouts.values()][0]();
 }
 
+test('stable moderate background is a baseline, not mistaken for speech', async () => {
+  const h = setup(); let amplitude = .015;
+  attachMeter(h, () => amplitude);
+  await h.element('start').fire('click'); completeEnvironmentCheck(h);
+  assert.match(h.element('environment-hint').textContent, /稳定底噪/);
+  assert.equal(h.element('environment-hint').classes.has('attention'), false);
+  const tick = [...h.intervals.values()][0];
+  h.setNow(3200); tick(); h.setNow(6400); tick();
+  assert.match(h.element('level-hint').textContent, /接近底噪/);
+  assert.equal(h.element('live-quality').classes.has('attention'), true);
+  amplitude = .08; tick();
+  assert.match(h.element('level-hint').textContent, /保持自然音量/);
+  assert.equal(h.element('live-quality').classes.has('attention'), false);
+});
+
 test('environment check warns on loud background and starts recorder only afterwards', async () => {
   const h = setup(); attachMeter(h, () => .04);
   await h.element('start').fire('click');
@@ -358,6 +373,43 @@ function respond(h, score = .5, issues = []) {
   h.XHR.last.responseText = JSON.stringify({ score, model_version: 'test-only', audio_duration_seconds: 10, analysis_seconds: .1, audio_quality: { summary: '未发现明显音量异常', issues } });
   h.XHR.last.onload();
 }
+
+test('result reports trimmed duration while keeping recording duration and raw quality', () => {
+  const h = setup();
+  h.element('audio-file').fire('change', { target: { files: [new File(['audio'], 'sample.wav')] } });
+  h.element('submit').fire('click'); h.XHR.last.status = 200;
+  h.XHR.last.responseText = JSON.stringify({ score: .2, model_version: 'test-prep1', audio_duration_seconds: 10, analysis_seconds: .1,
+    preprocessing: { processed_duration_seconds: 7.5 }, audio_quality: { issues: [{ code: 'low_volume', message: '原录音音量低' }] } });
+  h.XHR.last.onload();
+  assert.equal(h.element('result-duration').textContent, '10.0 秒（分析片段 7.5 秒）');
+  assert.equal(h.element('score').textContent, '0.2000');
+  assert.ok(h.element('quality-issues').children.some(item => item.textContent === '原录音音量低'));
+});
+
+test('playback enhancement only changes audio routing, preserves upload and resets on replacement', async () => {
+  const h = setup(); let sources = 0;
+  const destination = {}, gain = { gain: {}, connect() {} };
+  const source = { connect(target) { this.target = target; }, disconnect() {} };
+  h.window.AudioContext = class {
+    state = 'running'; destination = destination;
+    createGain() { return gain; }
+    createDynamicsCompressor() { return { threshold:{},knee:{},ratio:{},attack:{},release:{},connect(){} }; }
+    createMediaElementSource() { sources++; return source; }
+  };
+  const file = new File(['original audio bytes'], 'original.wav');
+  h.element('audio-file').fire('change', { target: { files: [file] } });
+  await h.element('enhance-playback').fire('click');
+  assert.equal(source.target, gain);
+  assert.equal(h.element('enhance-playback').attributes['aria-pressed'], 'true');
+  h.element('submit').fire('click');
+  assert.equal(await h.XHR.last.body.get('audio').text(), await file.text());
+  h.XHR.last.onerror();
+  h.element('audio-file').fire('change', { target: { files: [new File(['replacement'], 'second.wav')] } });
+  assert.equal(source.target, destination);
+  assert.equal(h.element('enhance-playback').attributes['aria-pressed'], 'false');
+  await h.element('enhance-playback').fire('click');
+  assert.equal(sources, 1);
+});
 
 test('result interpretation follows numeric thirds and updates on repeated analysis without changing scores', () => {
   const h = setup();

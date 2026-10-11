@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from backend.audio import AudioError, SAMPLE_RATE
+from backend.audio import AudioError, SAMPLE_RATE, PREPROCESSING_VERSION, prepare_model_audio
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "models"
@@ -18,7 +18,7 @@ class VoiceModel:
     def __init__(self):
         self.ready = False
         self.error = None
-        self.version = "CFRAFN-9d15a266"
+        self.version = "CFRAFN-9d15a266-prep1"
         self.classification_verified = False
         self.lock = threading.Lock()
         self.audit = {}
@@ -75,7 +75,7 @@ class VoiceModel:
         self.model.load_state_dict(state, strict=True)
         self.model.eval()
         digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-        self.version = "CFRAFN-9d15a266-" + digest[:8]
+        self.version = "CFRAFN-9d15a266-" + digest[:8] + "-prep1"
 
         # Explicit local assets; no downloads and no unrestricted pickle loading at startup.
         vgg_weights = MODEL_DIR / "vggish-10086976.pth"
@@ -96,7 +96,7 @@ class VoiceModel:
             "feature_order_matches_selected_list": list(self.smile.feature_names) == self.features,
             "vggish_features": 128, "strict_load": True,
             "feature_order": "upstream_extractor_order_with_upstream_weight_vector",
-            "preprocessing": "mono_16khz_no_extra_normalization_or_silence_removal",
+            "preprocessing": PREPROCESSING_VERSION,
         }
 
     def predict(self, waveform):
@@ -104,6 +104,7 @@ class VoiceModel:
 
         if not self.ready:
             raise AudioError("model_unavailable", "模型尚未就绪，请查看服务状态或联系项目维护者。", 503)
+        waveform, preprocessing = prepare_model_audio(waveform)
         # Match public inference extraction: upstream preserves openSMILE column order
         # but applies importance weights in the selected-list order. Do not silently
         # correct that discrepancy without evidence of the checkpoint's training recipe.
@@ -131,8 +132,9 @@ class VoiceModel:
             "score": score,
             "classification": None,
             "classification_verified": False,
+            "preprocessing": preprocessing,
             "warnings": [
                 "类别 0/1 的含义尚未获得确认；本分数不能解释为患病概率或诊断。",
-                "采用公开代码的特征顺序和提取方式；训练时的预处理及特征顺序仍需作者确认。",
+                "已按提供的脚本进行音频预处理；发布权重的训练配置及特征顺序仍需作者核对。",
             ],
         }

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
 
-from backend.audio import AudioError, MAX_BYTES, decode_audio, ffmpeg_path
+from backend.audio import AudioError, MAX_BYTES, PREPROCESSING_VERSION, decode_audio, ffmpeg_path
 from backend.inference import ROOT, VoiceModel
 from backend.limits import UploadLimit
 from backend.quality import assess_quality
@@ -60,6 +60,7 @@ def health():
         "model_ready": engine.ready,
         "decoder_ready": bool(ffmpeg_path()),
         "model_version": engine.version,
+        "preprocessing_version": PREPROCESSING_VERSION,
         "classification_verified": False,
         "message": "研究模型已就绪；类别解释待确认。" if ready else "服务未就绪，请检查模型依赖、权重及 FFmpeg。",
         "limits": {"max_seconds": 180, "min_seconds": 2, "max_bytes": MAX_BYTES},
@@ -74,8 +75,9 @@ def analyze_sync(content, suffix):
     started = time.perf_counter()
     try:
         waveform, duration = decode_audio(content, suffix)
+        quality = assess_quality(waveform)
         result = engine.predict(waveform)
-        result["audio_quality"] = assess_quality(waveform)
+        result["audio_quality"] = quality
         result.update(audio_duration_seconds=round(duration, 3), analysis_seconds=round(time.perf_counter() - started, 3))
         return result
     except AudioError:

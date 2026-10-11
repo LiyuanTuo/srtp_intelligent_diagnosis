@@ -79,8 +79,9 @@
           </div>
           <div id="live-hint" class="capture-hint" role="status" aria-live="polite"><span aria-hidden="true">☼</span><span id="light-hint">面向柔和白光，避开背光和直射强光。</span></div>
           <div id="camera-controls" class="camera-controls">
+            <label class="capture-delay"><input id="capture-delay" type="checkbox">延时 3 秒拍照</label>
             <button id="open-camera" class="button primary" type="button">开启相机</button>
-            <button id="take-photo" class="button primary" type="button" hidden>3 秒后拍照</button>
+            <button id="take-photo" class="button primary" type="button" hidden>拍照</button>
             <button id="switch-camera" class="button ghost" type="button" hidden>切换前 / 后置</button>
             <button id="close-camera" class="text-button" type="button" hidden>关闭相机</button>
           </div>
@@ -89,11 +90,13 @@
           <section id="photo-review" class="photo-review" hidden aria-labelledby="review-title" tabindex="-1">
             <div class="review-heading"><h3 id="review-title">拍好了，再看一眼</h3><button id="enlarge-photo" class="text-button" type="button">放大检查 ↗</button></div>
             <p id="photo-meta" class="small"></p>
-            <p id="photo-quality" class="quality-note"></p>
-            <fieldset id="review-checks"><legend>请对照照片，逐项确认</legend>
-              <label><input id="check-complete" type="checkbox">舌尖和两侧边缘完整，没有被嘴唇遮住</label>
-              <label><input id="check-sharp" type="checkbox">舌面纹理清楚，没有模糊或晃动重影</label>
-              <label><input id="check-light" type="checkbox">光线均匀，没有明显偏色、暗影或大片反光</label>
+            <fieldset id="review-checks"><legend>请对照照片确认</legend>
+              <ul class="review-criteria">
+                <li>舌尖和两侧边缘完整，没有被嘴唇遮住</li>
+                <li>舌面纹理清楚，没有模糊或晃动重影</li>
+                <li>光线均匀，没有明显偏色、暗影或大片反光</li>
+              </ul>
+              <label><input id="check-photo" type="checkbox">我已确认完毕</label>
             </fieldset>
             <div class="review-actions"><button id="retake-photo" class="button ghost" type="button">重新拍摄 / 选择</button><button id="confirm-photo" class="button primary" type="button" disabled>确认使用这张</button></div>
           </section>

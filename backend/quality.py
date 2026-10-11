@@ -15,7 +15,7 @@ def assess_quality(waveform):
     quiet_ratio = float(np.mean([np.sqrt(np.mean(frame ** 2)) < .005623413 for frame in frames]))
     issues = []
     if rms_dbfs < -45:
-        issues.append({"code": "low_volume", "message": "整体音量偏低，建议靠近麦克风并试听后再决定是否重录。"})
+        issues.append({"code": "low_volume", "message": "原录音音量偏低；分析时会自动统一音量，请试听确认人声清晰。"})
     if clipped_ratio >= .005:
         issues.append({"code": "possible_clipping", "message": "部分采样接近音量上限，可能出现失真；建议离麦克风稍远后重录。"})
     if quiet_ratio >= .6:

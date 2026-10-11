@@ -11,7 +11,7 @@
   "status": "ready",
   "model_ready": true,
   "decoder_ready": true,
-  "model_version": "CFRAFN-9d15a266-8eea2553",
+  "model_version": "CFRAFN-9d15a266-8eea2553-prep1",
   "classification_verified": false,
   "message": "研究模型已就绪；类别解释待确认。",
   "limits": {"max_seconds": 180, "min_seconds": 2, "max_bytes": 26214400}
@@ -32,7 +32,8 @@
 | `score` | number | 0–1 的原始 Sigmoid 输出，不是患病概率 |
 | `classification` | null | 类别解释未确认，暂不提供分类 |
 | `classification_verified` | boolean | 当前始终为 false |
-| `audio_duration_seconds` | number | 解码后实际参与分析的音频时长 |
+| `audio_duration_seconds` | number | 去除首尾静音前的录音时长 |
+| `preprocessing` | object | 预处理版本、增益、裁剪位置和实际分析片段时长，见下文 |
 | `analysis_seconds` | number | 解码、特征提取、推理总耗时，不含上传 |
 | `warnings` | string[] | 类别解释、预处理和特征顺序的局限 |
 | `audio_quality` | object | 独立的音频信号测量与操作建议，不改变模型分数 |
@@ -62,7 +63,7 @@
 
 ## 数据流
 
-浏览器录音/文件 → 有界 multipart 请求 → 临时文件 → FFmpeg 单声道 16 kHz → openSMILE eGeMAPSv02 Functionals + VGGish → PCA/量化并按时间平均 → CFRAFN → JSON。
+浏览器录音/文件 → 有界 multipart 请求 → 临时文件 → FFmpeg 保留原采样率和声道解码 → 声道算术平均 → resampy kaiser_best 重采样至 16 kHz → 峰值归一化 → librosa 首尾静音裁剪 → 内存 PCM_16 WAV 往返 → openSMILE eGeMAPSv02 Functionals + VGGish → PCA/量化并按时间平均 → CFRAFN → JSON。
 
 音频临时文件在解码成功或失败后清理。服务不写音频数据库、结果数据库或请求正文日志；命令行默认关闭访问日志。结果在当前页面内存中显示，刷新即清空。
 
@@ -73,4 +74,13 @@
 
 `issues` 为 `{code, message}` 数组，可能包含 `low_volume`（整体 RMS < −45 dBFS）、`possible_clipping`（接近上限的采样 ≥ 0.5%）和 `many_quiet_frames`（低音量帧 ≥ 60%）。这些是工程提示阈值，不是经验证的临床质量标准。无提示也不能证明录到了清晰人声或处于安静环境。
 
-计算使用解码后的音频副本，不归一化、不裁剪原始模型输入、不修改模型分数。原先近静音等无效音频仍直接报错，不产生报告。前端兼容暂未返回 `audio_quality` 的旧服务，缺失时隐藏质量区。
+质量计算使用单声道重采样后、归一化和裁剪前的音频，不修改该音频；模型特征则从预处理后的独立副本提取。原先近静音等无效音频仍直接报错，不产生报告。前端兼容暂未返回 `audio_quality` 的旧服务，缺失时隐藏质量区。
+
+
+## 预处理 v1（2026-10-11）
+
+按用户提供的 `preprocess.py` 接入：声道算术平均、`resampy.resample(filter="kaiser_best")`、除以整段绝对峰值、`librosa.effects.trim(top_db=60, ref=np.max, frame_length=2048, hop_length=512)`，最后在内存中按 PCM_16 保存并读回，以对齐脚本输出 WAV 的量化。保留中间停顿。所有有效提交都执行此流程，不通过文件名猜测是否已经处理过；不加入 AGC、压缩或降噪到模型输入。
+
+`preprocessing` 返回 `version`（`cfrafn-preprocess-v1`）、`sample_rate`、`resampler`、`normalization`、`gain_db`、`silence_top_db`、`output_subtype`、`input_duration_seconds`、`processed_duration_seconds`、`trimmed_start_seconds`、`trimmed_end_seconds`。health 也返回 `preprocessing_version`。模型版本追加 `-prep1`，权重本身未变。
+
+近静音/非有限数值在放大前拒绝；去除首尾静音后不足 2 秒返回 `audio_too_short`。为限制原采样率解码的资源使用，临时 WAV 上限为 128 MiB（`decoded_audio_too_large`，422）；采样率范围 4–192 kHz、声道数 1–8，超出返回 `unsupported_audio_parameters`（422）。25 MB 上传、180 秒录音限制保持不变。

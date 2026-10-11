@@ -6,6 +6,7 @@ const vm = require('node:vm');
 const quality = require('../web/tongue-quality.js');
 
 function setup(options = {}) {
+  const storage = options.storage || new Map();
   const ids = new Set([...fs.readFileSync('web/tongue.html', 'utf8').matchAll(/id="([^"]+)"/g)].map(m => m[1]));
   const nodes = new Map(), events = {}, timers = new Map(), created = [], revoked = [], encoders = [];
   let stops = 0, timerId = 0, requests = 0;
@@ -29,15 +30,15 @@ function setup(options = {}) {
   }
   const context = vm.createContext({
     document, Image, Blob, TongueQuality: quality,
-    window: { isSecureContext: options.secure !== false, addEventListener: (name, fn) => { events[name] = fn; } },
+    window: { isSecureContext: options.secure !== false, addEventListener: (name, fn) => { events[name] = fn; }, localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) } },
     navigator: { mediaDevices: { getUserMedia: async constraints => { requests++; assert.equal(constraints.audio, false); return options.getMedia ? options.getMedia() : stream; } } },
     URL: { createObjectURL() { const url = 'blob:' + created.length; created.push(url); return url; }, revokeObjectURL: url => revoked.push(url) },
     setInterval: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms }); return id; }, clearInterval: id => timers.delete(id),
   });
   vm.runInContext(fs.readFileSync('web/tongue.js', 'utf8'), context);
   return { element, events, timers, stream, document, created, revoked, encoders, stats: () => ({ stops, requests }),
-    shoot() { element('take-photo').fire('click'); const countdown = [...timers.values()].find(t => t.ms === 1000); for (let i = 0; i < 3; i++) countdown.fn(); },
-    checkAll() { for (const id of ['check-complete', 'check-sharp', 'check-light']) { element(id).checked = true; element(id).fire('change'); } },
+    shoot() { element('take-photo').fire('click'); },
+    confirmCheck() { element('check-photo').checked = true; element('check-photo').fire('change'); },
     import(file) { element('photo-file').files = [file]; return element('photo-file').fire('change'); },
   };
 }
@@ -61,19 +62,73 @@ test('permission and playback failures recover without holding the device', asyn
   const failed = setup({ playError: true }); await failed.element('open-camera').fire('click');
   assert.equal(failed.stats().stops, 1); assert.equal(failed.element('camera-video').srcObject, null);
 });
-test('capture stops camera, requires all manual checks, and retake releases photo', async () => {
-  const h = setup(); await h.element('open-camera').fire('click'); h.shoot();
+test('capture stops camera, requires the combined confirmation, and retake releases photo', async () => {
+  const h = setup(); await h.element('open-camera').fire('click');
+  assert.equal(h.element('capture-delay').checked, false);
+  assert.equal(h.element('take-photo').textContent, '拍照'); h.shoot();
   assert.equal(h.stats().stops, 1); assert.equal(h.timers.size, 0);
   assert.equal(h.element('photo-review').hidden, false);
   assert.equal(h.element('confirm-photo').disabled, true);
   h.element('confirm-photo').fire('click'); assert.equal(h.element('photo-complete').hidden, true);
-  h.checkAll(); assert.equal(h.element('confirm-photo').disabled, false);
+  h.confirmCheck(); assert.equal(h.element('confirm-photo').disabled, false);
+  h.element('check-photo').checked = false; h.element('check-photo').fire('change');
+  assert.equal(h.element('confirm-photo').disabled, true);
+  h.confirmCheck();
   h.element('confirm-photo').fire('click'); assert.equal(h.element('photo-complete').hidden, false);
   h.element('new-photo').fire('click'); assert.deepEqual(h.revoked, h.created);
-  assert.equal(h.element('check-complete').checked, false);
+  assert.equal(h.element('check-photo').checked, true);
 });
+
+test('review preference persists on retake and later visits; unchecking restores the gate', async () => {
+  const storage = new Map();
+  const first = setup({ storage });
+  await first.import(new Blob(['png'], { type: 'image/png' }));
+  assert.equal(first.element('check-photo').checked, false);
+  first.confirmCheck(); first.element('retake-photo').fire('click');
+  await first.import(new Blob(['png'], { type: 'image/png' }));
+  assert.equal(first.element('check-photo').checked, true);
+  assert.equal(first.element('confirm-photo').disabled, false);
+  const returning = setup({ storage });
+  await returning.import(new Blob(['png'], { type: 'image/png' }));
+  assert.equal(returning.element('check-photo').checked, true);
+  returning.element('check-photo').checked = false; returning.element('check-photo').fire('change');
+  assert.equal(returning.element('confirm-photo').disabled, true);
+  assert.equal(setup({ storage }).element('check-photo').checked, false);
+  assert.equal(setup().element('check-photo').checked, false);
+});
+
+test('blocked storage keeps confirmation usable and remembered within the page', async () => {
+  const h = setup({ storage: { get() { throw new Error('blocked'); }, set() { throw new Error('blocked'); } } });
+  await h.import(new Blob(['png'], { type: 'image/png' }));
+  h.confirmCheck(); h.element('retake-photo').fire('click');
+  await h.import(new Blob(['png'], { type: 'image/png' }));
+  assert.equal(h.element('check-photo').checked, true);
+  assert.equal(h.element('confirm-photo').disabled, false);
+});
+test('optional delay waits three seconds; disabling it restores immediate capture', async () => {
+  const h = setup(); await h.element('open-camera').fire('click');
+  h.element('capture-delay').checked = true; h.element('capture-delay').fire('change');
+  assert.equal(h.element('take-photo').textContent, '3 秒后拍照');
+  h.shoot();
+  assert.equal(h.element('capture-delay').disabled, true);
+  assert.equal(h.element('take-photo').disabled, true);
+  const timer = [...h.timers.values()].find(t => t.ms === 1000);
+  assert.equal(h.element('countdown').textContent, '3');
+  timer.fn(); timer.fn();
+  assert.equal(h.created.length, 0); assert.equal(h.element('countdown').textContent, '1');
+  timer.fn();
+  assert.equal(h.element('photo-review').hidden, false);
+  assert.equal(h.stats().stops, 1); assert.equal(h.timers.size, 0);
+  h.element('retake-photo').fire('click'); await h.element('open-camera').fire('click');
+  h.element('capture-delay').checked = false; h.element('capture-delay').fire('change');
+  assert.equal(h.element('take-photo').textContent, '拍照');
+  h.shoot(); assert.equal(h.element('photo-review').hidden, false);
+  assert.equal(h.timers.size, 0);
+});
+
 test('background cancels countdown and interruption releases tracks', async () => {
-  const h = setup(); await h.element('open-camera').fire('click'); h.element('take-photo').fire('click');
+  const h = setup(); await h.element('open-camera').fire('click');
+  h.element('capture-delay').checked = true; h.element('capture-delay').fire('change'); h.element('take-photo').fire('click');
   h.document.hidden = true; h.events.visibilitychange();
   assert.equal(h.timers.size, 0); assert.equal(h.created.length, 0); assert.equal(h.stats().stops, 1);
   h.document.hidden = false; await h.element('open-camera').fire('click'); h.events['track-ended']();

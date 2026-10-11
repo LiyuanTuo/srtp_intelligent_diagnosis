@@ -29,6 +29,7 @@ def test_real_model_strict_load_and_repeatability(real_client):
     assert module.engine.audit["strict_load"] is True
     assert module.engine.audit["architecture"]["transformed_feature_dim"] == 196
     assert module.engine.audit["feature_order_matches_selected_list"] is False
+    assert module.engine.audit["preprocessing"] == "cfrafn-preprocess-v1"
 
 
 @pytest.mark.parametrize("extension,codec", [("wav", "pcm_s16le"), ("webm", "libopus"), ("m4a", "aac"), ("mp3", "libmp3lame"), ("flac", "flac")])
@@ -45,6 +46,32 @@ def test_real_http_audio_formats(real_client, tmp_path, extension, codec):
     assert result["analysis_seconds"] > 0
     assert isinstance(result["audio_quality"]["issues"], list)
     assert "disclaimer" in result["audio_quality"]
+    assert result["preprocessing"]["version"] == "cfrafn-preprocess-v1"
+    assert 2 <= result["preprocessing"]["processed_duration_seconds"] <= result["audio_duration_seconds"] + .001
+
+
+def test_real_model_gain_invariance(real_client):
+    waveform, _ = decode_audio(SAMPLE.read_bytes(), ".ogg")
+    original = module.engine.predict(waveform)["score"]
+    quiet = module.engine.predict(waveform * .1)["score"]
+    assert abs(original - quiet) < .001
+
+
+def test_http_retains_raw_quality_after_normalization(real_client):
+    import io
+    import numpy as np
+    import soundfile as sf
+    t = np.arange(48000) / 16000
+    quiet = (.001 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    buffer = io.BytesIO()
+    sf.write(buffer, quiet, 16000, format="WAV", subtype="FLOAT")
+    response = real_client.post("/api/voice/analyze", data={"consent": "true"},
+                               files={"audio": ("quiet.wav", buffer.getvalue(), "audio/wav")})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["preprocessing"]["gain_db"] == pytest.approx(60, abs=.01)
+    assert result["audio_quality"]["rms_dbfs"] < -60
+    assert "low_volume" in [issue["code"] for issue in result["audio_quality"]["issues"]]
 
 
 def test_single_window_final_batch(real_client):

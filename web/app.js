@@ -8,6 +8,50 @@ let recorder = null, stream = null, chunks = [], timer = null, startedAt = 0;
 let pendingCapture = 0, discardRecording = false, request = null, maxTimer = null;
 let levelContext = null, levelSource = null, levelAnalyser = null, levelSamples = null, quietSince = null;
 let environmentTimer = null, environmentLevels = [], interruptionMessage = '';
+let backgroundReference = null;
+let playbackContext = null, playbackSource = null, playbackGain = null, playbackCompressor = null;
+let playbackEnhanced = false, playbackChanging = false, playbackGeneration = 0;
+function setPlaybackEnhancement(enabled) {
+  if (playbackSource) {
+    playbackSource.disconnect();
+    playbackSource.connect(enabled ? playbackGain : playbackContext.destination);
+  }
+  playbackEnhanced = enabled;
+  $('enhance-playback').setAttribute('aria-pressed', String(enabled));
+  $('enhance-playback').textContent = enabled ? '恢复原声' : '增强试听';
+  $('playback-enhancement-hint').textContent = enabled
+    ? '已提高试听音量并压缩较响片段；提交的仍是原始录音。'
+    : '听不清时可增强试听；提交的仍是原始录音。';
+}
+async function togglePlaybackEnhancement() {
+  if (!selectedFile || state !== 'ready' || playbackChanging) return;
+  const AudioEngine = window.AudioContext || window.webkitAudioContext;
+  if (!AudioEngine) { $('playback-enhancement-hint').textContent = '浏览器不支持增强试听，请使用播放器或系统音量调节。'; return; }
+  const generation = playbackGeneration;
+  playbackChanging = true; updateControls();
+  try {
+    playbackContext ||= new AudioEngine();
+    if (playbackContext.state !== 'running') await playbackContext.resume();
+    if (generation !== playbackGeneration || state !== 'ready') return;
+    if (playbackContext.state !== 'running') throw new Error('Playback context suspended');
+    if (!playbackSource) {
+      playbackGain = playbackContext.createGain(); playbackGain.gain.value = 2.5;
+      playbackCompressor = playbackContext.createDynamicsCompressor();
+      playbackCompressor.threshold.value = -6; playbackCompressor.knee.value = 6;
+      playbackCompressor.ratio.value = 12; playbackCompressor.attack.value = .003; playbackCompressor.release.value = .2;
+      playbackGain.connect(playbackCompressor); playbackCompressor.connect(playbackContext.destination);
+      // Only the preview element is routed here. MediaRecorder and submitted File are untouched.
+      playbackSource = playbackContext.createMediaElementSource($('playback'));
+    }
+    setPlaybackEnhancement(!playbackEnhanced);
+  } catch {
+    if (generation === playbackGeneration) {
+      setPlaybackEnhancement(false);
+      $('playback-enhancement-hint').textContent = '增强试听暂不可用，请使用播放器或系统音量调节。';
+    }
+  } finally { playbackChanging = false; updateControls(); }
+}
+
 let captureQuality = [], selectedQuality = [], previousDisplay = null;
 function rememberQuality(text, attention = true) {
   if (!captureQuality.some(item => item.text === text)) captureQuality.push({ text, attention });
@@ -53,6 +97,7 @@ function updateControls() {
   $('reset').disabled = recording || capturing || busy || stopping;
   $('again').disabled = recording || capturing || busy || stopping;
   $('replace-file').disabled = recording || capturing || busy || stopping;
+  $('enhance-playback').disabled = !selectedFile || state !== 'ready' || playbackChanging;
   $('preview').hidden = !selectedFile || recording || capturing || stopping;
   $('record-visual').classList.toggle('recording', recording);
 }
@@ -60,6 +105,7 @@ function stopLevelMeter() {
   if (levelSource) { try { levelSource.disconnect(); } catch {} }
   if (levelContext && levelContext.state !== 'closed') levelContext.close().catch(() => {});
   levelContext = null; levelSource = null; levelAnalyser = null; levelSamples = null; quietSince = null;
+  backgroundReference = null;
   $('live-quality').hidden = true;
   $('level-meter').value = -60;
   $('record-visual').style.setProperty('--input-level', '.3');
@@ -97,12 +143,15 @@ function updateLevelMeter(now) {
     $('level-hint').textContent = '请暂时不要说话，正在检查录音前的环境声…';
     return;
   }
-  if (db < -45) { if (quietSince === null) quietSince = now; } else quietSince = null;
+  // A stable fan can exceed the old absolute threshold without any speech.
+  const nearBackground = backgroundReference !== null && db < backgroundReference + 8;
+  const lowInput = db < -45 || nearBackground;
+  if (lowInput) { if (quietSince === null) quietSince = now; } else quietSince = null;
   let hint = '检测到声音，请保持自然音量。', attention = false;
   if (stream?.getAudioTracks?.().some(track => track.muted)) { hint = '麦克风输入暂时中断，请检查设备连接或系统麦克风设置。'; attention = true; }
   else if (peak >= .98) { hint = '音量接近上限，请离麦克风稍远一些。'; attention = true; }
-  else if (quietSince !== null && now - quietSince >= 3000) { hint = db < -60 ? '暂未检测到明显声音，请检查麦克风或开口说话。' : '声音持续偏轻，请稍靠近麦克风。'; attention = true; }
-  else if (db < -45) hint = '正在等待声音…';
+  else if (quietSince !== null && now - quietSince >= 3000) { hint = db < -60 ? '暂未检测到明显声音，请检查麦克风或开口说话。' : nearBackground ? '声音持续接近底噪，请开口朗读或稍靠近麦克风。' : '声音持续偏轻，请稍靠近麦克风。'; attention = true; }
+  else if (lowInput) hint = nearBackground ? '正在等待比底噪更清晰的声音…' : '正在等待声音…';
   if ($('level-hint').textContent !== hint) $('level-hint').textContent = hint;
   $('live-quality').classList.toggle('attention', attention);
   if (attention) rememberQuality(hint);
@@ -110,18 +159,23 @@ function updateLevelMeter(now) {
 function showEnvironmentResult() {
   // Advisory digital-level thresholds, not calibrated room SPL or a speech/noise classifier.
   const values = environmentLevels.slice().sort((a, b) => a - b);
+  backgroundReference = null;
   let text = '环境检查未取得足够数据，录音后请试听确认。', attention = false;
   if (values.length >= 10) {
     const median = values[Math.floor(values.length / 2)];
     const spread = values[Math.floor(values.length * .9)] - values[Math.floor(values.length * .1)];
+    const stable = spread <= 6;
     if (spread > 15) {
       text = '检查期间声音变化较大，可能有说话或突发声。建议取消后在安静状态下重试。'; attention = true;
-    } else if (median > -40) {
+    } else if (median > -30 || (!stable && median > -40)) {
       text = '录音前的环境声可能偏大，建议换到更安静的地方后重录。'; attention = true;
     } else if (median < -90) {
       text = '检查期间几乎没有输入信号，请开口说话并观察音量，确认麦克风正常。'; attention = true;
     } else {
-      text = '环境声检查完成，现在可以自然说话；录音后请试听确认。';
+      if (stable) backgroundReference = median;
+      text = stable && median > -45
+        ? '检测到稳定底噪，已作为音量参考；开始朗读后请确认人声清楚。'
+        : '环境声检查完成，现在可以自然说话；录音后请试听确认。';
     }
   }
   $('environment-hint').textContent = text;
@@ -140,6 +194,7 @@ function releaseStream() {
   $('duration-reminder').hidden = true;
 }
 function clearFile() {
+  playbackGeneration++; setPlaybackEnhancement(false);
   $('playback').pause(); $('playback').removeAttribute('src'); $('playback').load();
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = null; selectedFile = null; $('preview').hidden = true;
@@ -187,7 +242,7 @@ async function startRecording() {
   previousDisplay = { timer: $('timer').textContent, hint: $('record-hint').textContent };
   $('playback').pause(); $('environment-hint').hidden = true;
   captureQuality = []; message(); durationReminderShown = false; $('duration-reminder').hidden = true;
-  environmentLevels = []; interruptionMessage = '';
+  environmentLevels = []; backgroundReference = null; interruptionMessage = '';
   state = 'permission'; updateControls();
   const capture = ++pendingCapture;
   $('record-hint').textContent = '请在浏览器中允许麦克风访问';
@@ -303,6 +358,10 @@ function showResult(data) {
   LiquidGauge.render($('score-gauge'), data.score);
   showScoreInterpretation(data.score);
   $('result-duration').textContent = `${data.audio_duration_seconds.toFixed(1)} 秒`;
+  const processedSeconds = data.preprocessing?.processed_duration_seconds;
+  if (Number.isFinite(processedSeconds) && processedSeconds > 0 && data.audio_duration_seconds - processedSeconds >= .1) {
+    $('result-duration').textContent += `（分析片段 ${processedSeconds.toFixed(1)} 秒）`;
+  }
   $('result-time').textContent = `${data.analysis_seconds.toFixed(2)} 秒`;
   $('result-version').textContent = data.model_version;
   const quality = data.audio_quality;
@@ -354,6 +413,8 @@ async function checkHealth() {
     $('service-notice').hidden = false; $('service-notice').textContent = '暂时无法连接分析服务。可以准备音频，服务恢复后再提交。点击右上角状态可重新检查。';
   }
 }
+$('enhance-playback').addEventListener('click', togglePlaybackEnhancement);
+$('playback').addEventListener('play', () => { if (playbackContext?.state === 'suspended') playbackContext.resume().catch(() => {}); });
 $('start').addEventListener('click', startRecording);
 $('choose-audio').addEventListener('click', () => {
   if (!usageAcknowledged || !['idle', 'ready'].includes(state)) return;
@@ -396,6 +457,6 @@ $('playback').addEventListener('error', () => {
   if (selectedFile) message('浏览器无法试听本次录音，可尝试提交分析，或重新录制。', true);
 });
 if (window.matchMedia?.('(max-width: 680px)').matches) $('recording-guide').open = false;
-window.addEventListener('pagehide', () => { pendingCapture++; discardRecording = true; if (recorder?.state === 'recording') recorder.stop(); releaseStream(); request?.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); });
+window.addEventListener('pagehide', () => { playbackGeneration++; playbackContext?.close().catch(() => {}); pendingCapture++; discardRecording = true; if (recorder?.state === 'recording') recorder.stop(); releaseStream(); request?.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); });
 updateControls(); checkHealth();
 if (!usageAcknowledged) $('usage-dialog').showModal();

@@ -4,7 +4,13 @@
 (() => {
   const el = id => document.getElementById(id);
   const video = el('camera-video');
-  const checks = ['check-complete', 'check-sharp', 'check-light'];
+  const confirmation = el('check-photo');
+  const captureDelay = el('capture-delay');
+  captureDelay.checked = false;
+  const CONFIRMATION_KEY = 'shengyu.tongue-review-confirmed.v1';
+  let rememberedConfirmation = false;
+  try { rememberedConfirmation = window.localStorage.getItem(CONFIRMATION_KEY) === 'true'; } catch {}
+  confirmation.checked = rememberedConfirmation;
   let state = 'idle', stream = null, generation = 0, facing = 'user', mirrored = true;
   let lightTimer = null, countdownTimer = null, url = null, photo = null;
   const sample = document.createElement('canvas');
@@ -35,6 +41,8 @@
     el('open-camera').textContent = state === 'permission' ? '正在等待相机权限…' : '开启相机';
     el('take-photo').hidden = !live;
     el('take-photo').disabled = state !== 'live';
+    el('take-photo').textContent = captureDelay.checked ? '3 秒后拍照' : '拍照';
+    captureDelay.disabled = busy;
     el('switch-camera').hidden = !live;
     el('switch-camera').disabled = busy;
     el('close-camera').hidden = !(live || state === 'permission');
@@ -49,10 +57,10 @@
     el('live-hint').hidden = !!photo;
     el('photo-review').hidden = !reviewing;
     el('photo-complete').hidden = !complete;
-    el('confirm-photo').disabled = !reviewing || !checks.every(id => el(id).checked);
+    el('confirm-photo').disabled = !reviewing || !confirmation.checked;
     el('camera-state').textContent = ({ idle: '相机未开启', permission: '等待授权', live: '相机已开启', countdown: '准备拍照', encoding: '正在生成照片', loading: '正在读取照片', review: '等待人工检查', complete: '已确认 · 仅本页' })[state];
     el('capture-title').textContent = photo ? '检查你的舌像' : '让舌头完整入框';
-    el('camera-instruction').textContent = photo ? '先让舌头休息，再放大检查照片的细节。' : live ? '自然伸舌，对齐虚线；准备好后点击「3 秒后拍照」。' : '先调整光线，再开启相机。准备好后再伸舌。';
+    el('camera-instruction').textContent = photo ? '先让舌头休息，再放大检查照片的细节。' : live ? `自然伸舌，对齐虚线；准备好后点击「${captureDelay.checked ? '3 秒后拍照' : '拍照'}」。` : '先调整光线，再开启相机。准备好后再伸舌。';
     const step = photo ? 3 : live ? 2 : 1;
     [1, 2, 3].forEach(n => {
       el(`tongue-step-${n}`).classList.toggle('current', n === step);
@@ -75,7 +83,7 @@
     el('download-photo').removeAttribute('href');
     if (url) URL.revokeObjectURL(url);
     url = null; photo = null;
-    checks.forEach(id => { el(id).checked = false; });
+    confirmation.checked = rememberedConfirmation;
   }
   function reset() {
     stopCamera(); clearPhoto(); state = 'idle';
@@ -131,20 +139,17 @@
       message(errors[error.name] || '无法读取相机画面，请重试或从相册选择照片。', true);
     }
   }
-  function showPhoto(blob, width, height, level, imported) {
+  function showPhoto(blob, width, height, imported) {
     clearPhoto();
     photo = blob; url = URL.createObjectURL(blob);
     el('tongue-photo').src = url; el('large-photo').src = url;
     el('download-photo').href = url;
     el('download-photo').download = `tongue-${new Date().toISOString().replace(/[:.]/g, '-')}.${blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'}`;
     el('photo-meta').textContent = `${imported ? '已选择照片' : '相机拍摄 · 正常方向'} · ${width} × ${height} · ${(blob.size / 1024 / 1024).toFixed(2)} MB`;
-    let quality = level === 'dark' ? '中央画面偏暗，建议改善光线后重拍。' : level === 'bright' ? '中央画面偏亮，请检查是否有过曝或大片反光。' : '请重点检查舌面纹理、完整度和光线。';
-    if (Math.min(width, height) < 480) quality = '照片分辨率较低，建议靠近一些或使用更清晰的照片。' + quality;
-    el('photo-quality').textContent = quality + ' 这些是粗略提示，是否适合保留需要你对照照片确认。';
     state = 'review'; message(); render(); el('photo-review').focus();
   }
   function capture() {
-    if (state !== 'countdown') return;
+    if (!['live', 'countdown'].includes(state)) return;
     clearInterval(countdownTimer); countdownTimer = null; el('countdown').hidden = true;
     const token = generation;
     state = 'encoding'; render();
@@ -156,21 +161,21 @@
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(Math.min(1920, area.width)); canvas.height = Math.round(canvas.width * 3 / 4);
       canvas.getContext('2d').drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
-      const level = estimate(canvas, canvas.width, canvas.height, true);
       // Release the camera immediately after copying the frame, before encoding.
       stopCamera(); const encodingToken = generation;
       canvas.toBlob(blob => {
         if (encodingToken !== generation) return;
         if (!blob) { state = 'idle'; render(); message('照片生成失败，请重新开启相机拍摄。', true); return; }
-        showPhoto(blob, canvas.width, canvas.height, level, false);
+        showPhoto(blob, canvas.width, canvas.height, false);
       }, 'image/jpeg', .95);
     } catch {
       if (token !== generation && state !== 'encoding') return;
       stopCamera(); state = 'idle'; render(); message('拍照未完成，请重新开启相机。', true);
     }
   }
-  function beginCountdown() {
+  function takePhoto() {
     if (state !== 'live') return;
+    if (!captureDelay.checked) { message(); capture(); return; }
     state = 'countdown'; let remaining = 3;
     el('countdown').textContent = String(remaining); el('countdown').hidden = false;
     message(); render();
@@ -193,21 +198,26 @@
       await img.decode();
       if (token !== generation) return;
       if (!img.naturalWidth || !img.naturalHeight || img.naturalWidth * img.naturalHeight > 24000000) throw new Error('dimensions');
-      showPhoto(file, img.naturalWidth, img.naturalHeight, estimate(img, img.naturalWidth, img.naturalHeight), true);
+      showPhoto(file, img.naturalWidth, img.naturalHeight, true);
     } catch {
       if (token !== generation) return;
       state = 'idle'; render(); message('无法读取这张照片，或图片超过 2400 万像素。请换一张 JPG、PNG 或 WebP 照片。', true);
     } finally { URL.revokeObjectURL(temporaryUrl); }
   }
   el('open-camera').addEventListener('click', openCamera);
-  el('take-photo').addEventListener('click', beginCountdown);
+  el('take-photo').addEventListener('click', takePhoto);
+  captureDelay.addEventListener('change', render);
   el('switch-camera').addEventListener('click', () => { if (state !== 'live') return; facing = facing === 'user' ? 'environment' : 'user'; openCamera(); });
   el('close-camera').addEventListener('click', () => { stopCamera(); state = 'idle'; render(); message('相机已关闭，可以重新开启或选择照片。'); });
   el('choose-photo').addEventListener('click', () => el('photo-file').click());
   el('photo-file').addEventListener('change', importPhoto);
-  checks.forEach(id => el(id).addEventListener('change', render));
+  confirmation.addEventListener('change', () => {
+    rememberedConfirmation = confirmation.checked;
+    try { window.localStorage.setItem(CONFIRMATION_KEY, String(rememberedConfirmation)); } catch {}
+    render();
+  });
   el('confirm-photo').addEventListener('click', () => {
-    if (state !== 'review' || !checks.every(id => el(id).checked)) return;
+    if (state !== 'review' || !confirmation.checked) return;
     state = 'complete'; render(); el('photo-complete').focus();
   });
   el('retake-photo').addEventListener('click', reset);

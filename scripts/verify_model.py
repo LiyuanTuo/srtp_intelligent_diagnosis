@@ -32,4 +32,5 @@ print(json.dumps({
     "repeat_delta": abs(outputs[0]["score"] - outputs[1]["score"]),
     "result": outputs[0],
 }, ensure_ascii=False, indent=2))
+model.close()
 

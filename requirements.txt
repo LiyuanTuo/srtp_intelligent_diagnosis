@@ -1,5 +1,6 @@
 # Install CPU torch separately; see README.md.
 numpy==1.26.4
+pyarrow==25.0.1
 pandas==2.2.2
 librosa==0.10.2.post1
 opensmile==2.5.1

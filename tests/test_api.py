@@ -61,3 +61,8 @@ def test_health_does_not_claim_ready_when_decoder_is_missing(monkeypatch, tmp_pa
     response = client.get("/api/health")
     assert response.json()["decoder_ready"] is False
     assert response.json()["status"] == "unavailable"
+
+
+def test_readiness_fails_when_model_is_unavailable(monkeypatch):
+    monkeypatch.setattr(module.engine, "ready", False)
+    assert client.get("/api/ready").status_code == 503

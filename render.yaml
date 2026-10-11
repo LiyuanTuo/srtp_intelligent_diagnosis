@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: srtp-voice-research
+    runtime: docker
+    region: singapore
+    plan: 1c-2g
+    healthCheckPath: /api/ready
+    envVars:
+      - key: PYTHONUTF8
+        value: "1"

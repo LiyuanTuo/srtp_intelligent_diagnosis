@@ -66,6 +66,14 @@ def health():
     }
 
 
+@app.get("/api/ready", include_in_schema=False)
+def readiness():
+    # Hosting health checks must fail when inference or decoding is unavailable.
+    ready = engine.ready and bool(ffmpeg_path())
+    return JSONResponse({"status": "ready" if ready else "unavailable"},
+                        status_code=200 if ready else 503)
+
+
 def analyze_sync(content, suffix):
     if not engine.ready:
         raise AudioError("model_unavailable", "模型尚未就绪，请稍后重试或联系项目维护者。", 503)

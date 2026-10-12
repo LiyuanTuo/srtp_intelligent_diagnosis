@@ -16,7 +16,7 @@ function setup(getMedia, { acknowledge = true, storage = new Map() } = {}) {
     querySelector(selector) { this.nodes ||= {}; return this.nodes[selector] ||= new Element(); }
     getClientRects() { return []; }
     addEventListener(name, handler) { this.events[name] = handler; }
-    setAttribute(key, value) { this.attributes[key] = value; } removeAttribute(key) { delete this.attributes[key]; } pause() {} load() {} focus() {} scrollIntoView() {}
+    setAttribute(key, value) { this.attributes[key] = value; } getAttribute(key) { return this.attributes[key] ?? null; } removeAttribute(key) { delete this.attributes[key]; } pause() {} load() {} focus() {} scrollIntoView() {}
     showModal() { this.open = true; } close() { this.open = false; }
     click() { this.clicked = true; }
     replaceChildren() { this.children = []; } append(child) { this.children.push(child); }
@@ -563,6 +563,11 @@ test('fixed six-line script is exact, and manual reading position resets for a n
     '落日下的乌鸦想睡觉。',
   ];
   assert.deepEqual(expected.map((_, i) => h.element(`reading-line-${i + 1}`).textContent), expected);
+  h.element('reading-size').fire('click');
+  assert.equal(h.element('reading-size').getAttribute('aria-pressed'), 'true');
+  assert.equal(h.element('reading-lines').classes.has('large-print'), true);
+  h.element('reading-size').fire('click');
+  assert.equal(h.element('reading-lines').classes.has('large-print'), false);
   for (let i = 0; i < 5; i++) h.element('reading-next').fire('click');
   assert.equal(h.element('reading-status').textContent, '第 6 / 6 句');
   assert.equal(h.element('reading-next').disabled, true);

@@ -83,6 +83,7 @@ body:has(.usage-dialog[open]){overflow:hidden}
 .reading-lines li::before{content:counter(reading, decimal-leading-zero);flex:0 0 auto;color:#8ea4b6;font-size:.6875rem;font-variant-numeric:tabular-nums}
 .reading-lines li.active{background:white;border-color:#bfd9eb;color:#203e58;font-weight:600}
 .reading-lines li.active::before{color:var(--blue)}
+.reading-lines.large-print li{font-size:1.25rem;line-height:1.85}
 .reading-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#516d83;font-size:.8125rem}
 .reading-toolbar>div{display:flex;gap:8px}
 .reading-toolbar .button{padding:8px 12px;min-height:38px;font-size:.75rem}

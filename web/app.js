@@ -87,6 +87,13 @@ function setReadingIndex(index) {
   $('reading-prev').disabled = readingIndex === 0;
   $('reading-next').disabled = readingIndex === 5;
 }
+function toggleReadingSize() {
+  const button = $('reading-size');
+  const expanded = button.getAttribute('aria-pressed') !== 'true';
+  button.setAttribute('aria-pressed', String(expanded));
+  button.textContent = expanded ? '恢复字号' : '放大文字';
+  $('reading-lines').classList.toggle('large-print', expanded);
+}
 function clearReport() {
   if (reportUrl) URL.revokeObjectURL(reportUrl);
   reportUrl = null;
@@ -443,6 +450,7 @@ async function checkHealth() {
   }
 }
 $('enhance-playback').addEventListener('click', togglePlaybackEnhancement);
+$('reading-size').addEventListener('click', toggleReadingSize);
 $('reading-prev').addEventListener('click', () => setReadingIndex(readingIndex - 1));
 $('reading-next').addEventListener('click', () => setReadingIndex(readingIndex + 1));
 $('playback').addEventListener('play', () => { if (playbackContext?.state === 'suspended') playbackContext.resume().catch(() => {}); });

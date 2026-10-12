@@ -76,3 +76,22 @@ body:has(.usage-dialog[open]){overflow:hidden}
 .playback-tools .button{padding:9px 16px;flex-shrink:0}
 .playback-tools p{margin:0;flex:1;min-width:180px}
 .playback-tools [aria-pressed="true"]{background:#edf5fc;color:var(--blue);border-color:var(--blue)}
+
+/* The complete fixed script stays visible while the highlighted line can move. */
+.reading-lines{list-style:none;counter-reset:reading;margin:18px 0 10px;padding:0;display:grid;gap:6px}
+.reading-lines li{counter-increment:reading;display:flex;align-items:baseline;gap:12px;padding:9px 12px;border:1px solid transparent;border-radius:8px;color:#42596c;font-size:1rem;line-height:1.75;letter-spacing:.02em}
+.reading-lines li::before{content:counter(reading, decimal-leading-zero);flex:0 0 auto;color:#8ea4b6;font-size:.6875rem;font-variant-numeric:tabular-nums}
+.reading-lines li.active{background:white;border-color:#bfd9eb;color:#203e58;font-weight:600}
+.reading-lines li.active::before{color:var(--blue)}
+.reading-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#516d83;font-size:.8125rem}
+.reading-toolbar>div{display:flex;gap:8px}
+.reading-toolbar .button{padding:8px 12px;min-height:38px;font-size:.75rem}
+.fixed-reading .reading-note{margin:10px 0 0;font-size:.6875rem;color:#728697;line-height:1.7}
+.playback-tools a.button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:44px}
+.preview-check{margin-top:18px;padding:15px 18px;background:#f5f8fb;border-radius:8px;font-size:.75rem;color:#536b7e}
+.preview-check strong{display:block;font-size:.8125rem;color:#304b62}
+.preview-check ul{margin:8px 0;padding-left:20px;line-height:1.9}
+.preview-check p{margin:7px 0 0;line-height:1.7}
+.result-actions{display:flex;gap:12px;margin-top:12px}
+.result-actions .button{display:inline-flex;align-items:center;justify-content:center;flex:1;text-decoration:none;text-align:center;min-width:0}
+@media(max-width:680px){.reading-lines li{font-size:.9375rem;padding:8px 10px}.reading-toolbar{align-items:flex-start}.reading-toolbar>div{width:100%}.reading-toolbar .button{flex:1}.result-actions{flex-direction:column}}

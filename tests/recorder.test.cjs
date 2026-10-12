@@ -9,13 +9,14 @@ const { File } = require('node:buffer');
 function setup(getMedia, { acknowledge = true, storage = new Map() } = {}) {
   const elements = new Map(), windowEvents = {}, timeouts = new Map(), intervals = new Map();
   let now = 0;
-  let nextTimer = 0, stopped = 0, created = 0, revoked = 0;
+  let nextTimer = 0, nextObjectUrl = 0, stopped = 0, created = 0, revoked = 0;
+  const objects = new Map();
   class Element {
     constructor() { this.hidden = false; this.disabled = false; this.checked = false; this.value = ''; this.events = {}; this.children = []; this.properties = {}; this.attributes = {}; this.classes = new Set(); this.style = { setProperty: (key, value) => this.properties[key] = value }; this.classList = { toggle: (key, enabled) => enabled ? this.classes.add(key) : this.classes.delete(key), add: key => this.classes.add(key) }; }
     querySelector(selector) { this.nodes ||= {}; return this.nodes[selector] ||= new Element(); }
     getClientRects() { return []; }
     addEventListener(name, handler) { this.events[name] = handler; }
-    setAttribute(key, value) { this.attributes[key] = value; } removeAttribute() {} pause() {} load() {} focus() {} scrollIntoView() {}
+    setAttribute(key, value) { this.attributes[key] = value; } removeAttribute(key) { delete this.attributes[key]; } pause() {} load() {} focus() {} scrollIntoView() {}
     showModal() { this.open = true; } close() { this.open = false; }
     click() { this.clicked = true; }
     replaceChildren() { this.children = []; } append(child) { this.children.push(child); }
@@ -25,7 +26,11 @@ function setup(getMedia, { acknowledge = true, storage = new Map() } = {}) {
   const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map(match => match[1]));
   const element = id => {
     assert.ok(ids.has(id), `Missing element in page: ${id}`);
-    if (!elements.has(id)) elements.set(id, new Element());
+    if (!elements.has(id)) {
+      const item = new Element();
+      if (/^reading-line-[1-6]$/.test(id)) item.textContent = html.match(new RegExp(`id="${id}"[^>]*>([^<]+)<`))?.[1] || '';
+      elements.set(id, item);
+    }
     return elements.get(id);
   };
   const track = { events: {}, muted: false, stop() { stopped++; }, addEventListener(name, handler) { this.events[name] = handler; } };
@@ -48,7 +53,7 @@ function setup(getMedia, { acknowledge = true, storage = new Map() } = {}) {
     document: { getElementById: element, createElement: () => new Element(), createElementNS: () => new Element() }, window,
     navigator: { mediaDevices: { getUserMedia: getMedia || (async () => stream) } },
     MediaRecorder: Recorder, XMLHttpRequest: XHR, File, Blob, FormData, AbortSignal,
-    URL: { createObjectURL() { created++; return 'blob:test'; }, revokeObjectURL() { revoked++; } },
+    URL: { createObjectURL(blob) { const url = `blob:test-${++nextObjectUrl}`; objects.set(url, blob); if (blob instanceof File) created++; return url; }, revokeObjectURL(url) { if (objects.get(url) instanceof File) revoked++; objects.delete(url); } },
     performance: { now: () => now }, requestAnimationFrame: () => 1, cancelAnimationFrame() {},
     setInterval: fn => { const id = ++nextTimer; intervals.set(id, fn); return id; }, clearInterval: id => intervals.delete(id),
     setTimeout: fn => { const id = ++nextTimer; timeouts.set(id, fn); return id; }, clearTimeout: id => timeouts.delete(id),
@@ -58,7 +63,7 @@ function setup(getMedia, { acknowledge = true, storage = new Map() } = {}) {
   context.LiquidGauge = window.LiquidGauge;
   vm.runInContext(fs.readFileSync('web/app.js', 'utf8'), context);
   if (acknowledge) element('acknowledge-usage').fire('click');
-  return { element, Recorder, XHR, stream, track, windowEvents, timeouts, window, intervals, setNow: value => { now = value; }, stats: () => ({ stopped, created, revoked }) };
+  return { element, Recorder, XHR, stream, track, windowEvents, timeouts, window, intervals, objectFor: url => objects.get(url), setNow: value => { now = value; }, stats: () => ({ stopped, created, revoked }) };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
@@ -411,26 +416,15 @@ test('playback enhancement only changes audio routing, preserves upload and rese
   assert.equal(sources, 1);
 });
 
-test('result interpretation follows numeric thirds and updates on repeated analysis without changing scores', () => {
+test('every score keeps the same non-diagnostic explanation and the model value unchanged', () => {
   const h = setup();
   h.element('audio-file').fire('change', { target: { files: [new File(['audio'], 'sample.wav')] } });
-  for (const [score, band, phrase] of [
-    [0, '较低数值区间', '你的感受依然值得'],
-    [1 / 3 - .00001, '较低数值区间', '你的感受依然值得'],
-    [1 / 3, '中间数值区间', '不是“临界诊断”'],
-    [.5, '中间数值区间', '不是“临界诊断”'],
-    [2 / 3 - .00001, '中间数值区间', '不是“临界诊断”'],
-    [2 / 3, '较高数值区间', '不能确认你患有'],
-    [1, '较高数值区间', '不能确认你患有'],
-    [.15, '较低数值区间', '你的感受依然值得'],
-  ]) {
+  for (const score of [0, 1 / 3, .5, 2 / 3, 1, .15]) {
     respond(h, score);
     assert.equal(h.element('result').hidden, false);
     assert.equal(h.element('score').textContent, score.toFixed(4));
-    assert.equal(h.element('interpretation-band').textContent, band);
-    assert.ok(h.element('interpretation-message').textContent.includes(phrase));
-    const nextAction = score < 1 / 3 ? '照顾自己不需要等到状态变差' : score < 2 / 3 ? '不需要一次理清所有问题' : '不必为了得到更低的分数反复录音';
-    assert.ok(h.element('interpretation-next').textContent.includes(nextAction));
+    assert.equal(h.element('interpretation-band').textContent, '未设诊断阈值');
+    assert.match(h.element('interpretation-message').textContent, /不能换算成患病概率/);
   }
 });
 
@@ -483,13 +477,13 @@ test('recording anomalies survive recovery and retry, with no duplicate messages
   assert.equal(h.element('quality-issues').children.filter(item => item.textContent.includes('接近上限')).length, 1);
 });
 
-test('water gauge matches score endpoints and midpoint without changing the model value', () => {
+test('water gauge uses one neutral color at every score without changing the model value', () => {
   const h = setup();
   h.element('audio-file').fire('change', { target: { files: [new File(['audio'], 'input.wav')] } });
-  for (const [score, color] of [[0, 'rgb(46, 166, 119)'], [.5, 'rgb(232, 183, 48)'], [1, 'rgb(219, 76, 76)']]) {
+  for (const score of [0, .5, 1]) {
     respond(h, score);
     assert.equal(h.element('score-gauge').properties['--fill'], `${score * 100}%`);
-    assert.equal(h.element('score-gauge').properties['--water-color'], color);
+    assert.equal(h.element('score-gauge').properties['--water-color'], 'rgb(40, 123, 193)');
     assert.equal(h.element('score').textContent, score.toFixed(4));
     assert.equal(h.element('score-gauge').classes.has('empty'), score === 0);
     assert.equal(h.element('score-gauge').classes.has('full'), score === 1);
@@ -556,4 +550,44 @@ test('SVG has a single colored numeral over a crisp pale-gray disc and exact emp
   assert.match(svg.innerHTML, /<circle class="liquid-backing" cx="120" cy="120" r="88" fill="#f3f7fa"/);
   assert.equal((svg.innerHTML.match(/<text /g) || []).length, 1);
   assert.equal(svg.querySelector('.liquid-number').textContent, '0.5000');
+});
+
+test('fixed six-line script is exact, and manual reading position resets for a new recording', async () => {
+  const h = setup();
+  const expected = [
+    '河流里的鱼儿在闲游，',
+    '广播站的狮子怕大叫，',
+    '天空中的老鹰正飞翔，',
+    '山坡上的小羊爱吃草，',
+    '白塔上的大鹅磨咖啡，',
+    '落日下的乌鸦想睡觉。',
+  ];
+  assert.deepEqual(expected.map((_, i) => h.element(`reading-line-${i + 1}`).textContent), expected);
+  for (let i = 0; i < 5; i++) h.element('reading-next').fire('click');
+  assert.equal(h.element('reading-status').textContent, '第 6 / 6 句');
+  assert.equal(h.element('reading-next').disabled, true);
+  h.element('reading-prev').fire('click');
+  assert.equal(h.element('reading-status').textContent, '第 5 / 6 句');
+  await h.element('start').fire('click');
+  assert.equal(h.element('reading-status').textContent, '第 1 / 6 句');
+  h.element('cancel').fire('click'); await settle();
+});
+
+test('audio and report can be downloaded locally; replacing audio removes the old report', async () => {
+  const h = setup();
+  const file = new File(['audio bytes'], 'sample.wav');
+  h.element('audio-file').fire('change', { target: { files: [file] } });
+  assert.equal(h.objectFor(h.element('download-audio').href), file);
+  assert.equal(h.element('download-audio').download, 'sample.wav');
+  respond(h, .42, [{ code: 'low_volume', message: '人声偏小' }]);
+  const reportUrl = h.element('download-report').href;
+  const report = await h.objectFor(reportUrl).text();
+  assert.match(report, /研究模型分数：0\.4200（不是患病概率）/);
+  assert.match(report, /河流里的鱼儿在闲游，\n广播站的狮子怕大叫，/);
+  assert.match(report, /落日下的乌鸦想睡觉。/);
+  assert.match(report, /- 人声偏小/);
+  assert.doesNotMatch(report, /audio bytes/);
+  h.element('audio-file').fire('change', { target: { files: [new File(['new'], 'other.wav')] } });
+  assert.equal(h.objectFor(reportUrl), undefined);
+  assert.equal(h.element('result').hidden, true);
 });

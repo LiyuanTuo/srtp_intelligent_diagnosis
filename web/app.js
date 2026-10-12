@@ -1,6 +1,7 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-let state = 'idle', selectedFile = null, objectUrl = null;
+let state = 'idle', selectedFile = null, objectUrl = null, reportUrl = null;
+let readingIndex = 0;
 const USAGE_ACK_KEY = 'shengyu.voice-usage-acknowledged.v1';
 let usageAcknowledged = false, durationReminderShown = false;
 try { usageAcknowledged = window.localStorage.getItem(USAGE_ACK_KEY) === 'true'; } catch {}
@@ -73,6 +74,23 @@ function message(text = '', error = false) {
 }
 function step(index) {
   [1, 2, 3].forEach(n => { $('step-' + n).classList.toggle('current', n === index); if (n === index) $('step-' + n).setAttribute('aria-current', 'step'); else $('step-' + n).removeAttribute('aria-current'); });
+}
+function setReadingIndex(index) {
+  readingIndex = Math.max(0, Math.min(5, index));
+  for (let n = 1; n <= 6; n++) {
+    const line = $('reading-line-' + n);
+    line.classList.toggle('active', n === readingIndex + 1);
+    if (n === readingIndex + 1) line.setAttribute('aria-current', 'step');
+    else line.removeAttribute('aria-current');
+  }
+  $('reading-status').textContent = `第 ${readingIndex + 1} / 6 句`;
+  $('reading-prev').disabled = readingIndex === 0;
+  $('reading-next').disabled = readingIndex === 5;
+}
+function clearReport() {
+  if (reportUrl) URL.revokeObjectURL(reportUrl);
+  reportUrl = null;
+  $('download-report').removeAttribute('href');
 }
 function updateControls() {
   const recording = state === 'recording', capturing = state === 'permission' || state === 'calibrating';
@@ -197,6 +215,7 @@ function clearFile() {
   playbackGeneration++; setPlaybackEnhancement(false);
   $('playback').pause(); $('playback').removeAttribute('src'); $('playback').load();
   if (objectUrl) URL.revokeObjectURL(objectUrl);
+  clearReport(); $('download-audio').removeAttribute('href');
   objectUrl = null; selectedFile = null; $('preview').hidden = true;
   selectedQuality = [];
   $('audio-file').value = '';
@@ -209,6 +228,7 @@ function selectFile(file, observations = []) {
   if (!SUPPORTED_AUDIO.test(file.name)) { message('请选择 WAV、WebM、OGG、M4A、MP4、MP3 或 FLAC 音频。', true); updateControls(); return; }
   clearFile(); state = 'idle'; step(1);
   selectedFile = file; objectUrl = URL.createObjectURL(file);
+  $('download-audio').href = objectUrl; $('download-audio').download = file.name;
   selectedQuality = observations.slice(); previousDisplay = null;
   $('playback').src = objectUrl; $('file-name').textContent = file.name;
   $('file-size').textContent = file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${(file.size / 1024 / 1024).toFixed(2)} MB`;
@@ -220,7 +240,7 @@ function reset() {
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   releaseStream(); recorder = null; chunks = []; clearFile();
   captureQuality = []; previousDisplay = null;
-  state = 'idle'; $('timer').textContent = '00:00';
+  state = 'idle'; $('timer').textContent = '00:00'; setReadingIndex(0);
   $('record-hint').textContent = '准备好了，就按下开始'; message(); step(1); updateControls();
 }
 function finish(discard = false) {
@@ -239,6 +259,7 @@ async function startRecording() {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
     message('当前环境无法录音。请使用支持录音的浏览器，通过 HTTPS 或本机 localhost 访问。', true); return;
   }
+  setReadingIndex(0);
   previousDisplay = { timer: $('timer').textContent, hint: $('record-hint').textContent };
   $('playback').pause(); $('environment-hint').hidden = true;
   captureQuality = []; message(); durationReminderShown = false; $('duration-reminder').hidden = true;
@@ -329,34 +350,40 @@ async function startRecording() {
     if (!selectedFile) $('record-hint').textContent = '录音尚未开始'; updateControls();
   }
 }
-function showScoreInterpretation(score) {
-  // Equal thirds organize presentation copy only; these are not clinical cutoffs.
-  const content = score < 1 / 3 ? {
-    band: '较低数值区间',
-    lead: '看见分数，也别忽略自己的感受。',
-    message: '本次模型输出处于较低数值区间。这并不意味着你一定没有情绪困扰。如果最近感到疲惫、低落或压力，你的感受依然值得被认真对待。',
-    next: '今天可以为自己留一点休息时间：散散步、做一件喜欢的小事，或和亲近的人聊聊。照顾自己不需要等到状态变差；如果你其实并不好受，也不必因为分数较低而把感受放在一边。',
-  } : score < 2 / 3 ? {
-    band: '中间数值区间',
-    lead: '给自己一点时间，理解最近的状态。',
-    message: '本次模型输出处于中间数值区间。这不是“临界诊断”，也不代表某种严重程度。不必急着给自己贴标签，可以从最近让你感到轻松或吃力的事情开始梳理。',
-    next: '如果愿意，可以记下最近让你感到压力的事情，以及让你稍微放松的时刻，再选一件力所能及的小事去调整。不需要一次理清所有问题，也可以邀请一位信任的人陪你聊一聊。',
-  } : {
-    band: '较高数值区间',
-    lead: '先别急着下结论，你不需要独自面对担心。',
-    message: '本次模型输出处于较高数值区间。这个数值不能确认你患有抑郁症，也不代表困扰的轻重。如果看到结果让你不安，可以先放下分数，把注意力转回自己的实际感受。',
-    next: '如果这个结果让你紧张，可以先暂停查看分数，给自己一点缓冲时间。不必为了得到更低的分数反复录音。愿意的话，和信任的人说说你此刻的担心；比起这个数字，你最近的真实感受更值得关注。',
-  };
-  $('interpretation-band').textContent = content.band;
-  $('interpretation-lead').textContent = content.lead;
-  $('interpretation-message').textContent = content.message;
-  $('interpretation-next').textContent = content.next;
+function showScoreInterpretation() {
+  $('interpretation-band').textContent = '未设诊断阈值';
+  $('interpretation-lead').textContent = '这是模型分数，不是诊断结果';
+  $('interpretation-message').textContent = '这个分数尚未完成临床校准，不能换算成患病概率，也不能据此判断困扰的轻重。';
+  $('interpretation-next').textContent = '先听一遍录音，并查看下方的质量提示。如需留存，可下载本次记录。';
+}
+function prepareReport(data, observations) {
+  clearReport();
+  const lines = [
+    '声语 · 本次声音分析记录',
+    '研究演示；不能用于诊断或判断抑郁风险。',
+    '',
+    `研究模型分数：${data.score.toFixed(4)}（不是患病概率）`,
+    `音频时长：${$('result-duration').textContent}`,
+    `分析耗时：${$('result-time').textContent}`,
+    `模型版本：${data.model_version}`,
+    '',
+    '固定朗读材料：',
+    ...Array.from({ length: 6 }, (_, index) => $('reading-line-' + (index + 1)).textContent),
+    '',
+    '录音质量提示：',
+    ...(observations.length ? observations.map(text => `- ${text}`) : ['无额外提示；仍请以试听为准。']),
+    '',
+    '说明：录音内容、设备和音量都可能影响输出。两次分数的差异不能说明心理状态变化。',
+  ];
+  reportUrl = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' }));
+  $('download-report').href = reportUrl;
+  $('download-report').download = 'voice-assessment-record.txt';
 }
 function showResult(data) {
   if (!Number.isFinite(data.score) || data.score < 0 || data.score > 1 || !data.model_version || !Number.isFinite(data.audio_duration_seconds) || !Number.isFinite(data.analysis_seconds)) throw new Error('服务返回的数据不完整，请联系项目维护者。');
   $('score').textContent = data.score.toFixed(4);
   LiquidGauge.render($('score-gauge'), data.score);
-  showScoreInterpretation(data.score);
+  showScoreInterpretation();
   $('result-duration').textContent = `${data.audio_duration_seconds.toFixed(1)} 秒`;
   const processedSeconds = data.preprocessing?.processed_duration_seconds;
   if (Number.isFinite(processedSeconds) && processedSeconds > 0 && data.audio_duration_seconds - processedSeconds >= .1) {
@@ -373,13 +400,15 @@ function showResult(data) {
   $('quality-result').style.setProperty('order', attention ? '1' : '3');
   $('quality-summary').textContent = attention ? '本次音频有以下提示，建议先试听，必要时重新录制。' : quality?.summary || '录音前的环境检查已完成，请以试听为准。';
   const observations = [...selectedQuality.map(item => item.text), ...issues.map(issue => issue.message)].filter(Boolean);
-  [...new Set(observations)].forEach(text => { const li = document.createElement('li'); li.textContent = text; $('quality-issues').append(li); });
+  const uniqueObservations = [...new Set(observations)];
+  uniqueObservations.forEach(text => { const li = document.createElement('li'); li.textContent = text; $('quality-issues').append(li); });
+  prepareReport(data, uniqueObservations);
   $('result').hidden = false; message('分析完成。结果仅保留在当前页面。'); step(3);
   $('result').focus({ preventScroll: true }); $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function submit() {
   if (!selectedFile || !usageAcknowledged || state !== 'ready') return;
-  $('playback').pause(); $('result').hidden = true; message(); state = 'analyzing'; step(2); updateControls();
+  $('playback').pause(); $('result').hidden = true; clearReport(); message(); state = 'analyzing'; step(2); updateControls();
   $('progress-wrap').hidden = false; $('progress').value = 0; $('progress-label').textContent = '正在上传音频…';
   const xhr = new XMLHttpRequest(); request = xhr;
   xhr.open('POST', '/api/voice/analyze'); xhr.timeout = 180000;
@@ -414,6 +443,8 @@ async function checkHealth() {
   }
 }
 $('enhance-playback').addEventListener('click', togglePlaybackEnhancement);
+$('reading-prev').addEventListener('click', () => setReadingIndex(readingIndex - 1));
+$('reading-next').addEventListener('click', () => setReadingIndex(readingIndex + 1));
 $('playback').addEventListener('play', () => { if (playbackContext?.state === 'suspended') playbackContext.resume().catch(() => {}); });
 $('start').addEventListener('click', startRecording);
 $('choose-audio').addEventListener('click', () => {
@@ -457,6 +488,6 @@ $('playback').addEventListener('error', () => {
   if (selectedFile) message('浏览器无法试听本次录音，可尝试提交分析，或重新录制。', true);
 });
 if (window.matchMedia?.('(max-width: 680px)').matches) $('recording-guide').open = false;
-window.addEventListener('pagehide', () => { playbackGeneration++; playbackContext?.close().catch(() => {}); pendingCapture++; discardRecording = true; if (recorder?.state === 'recording') recorder.stop(); releaseStream(); request?.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); });
-updateControls(); checkHealth();
+window.addEventListener('pagehide', () => { playbackGeneration++; playbackContext?.close().catch(() => {}); pendingCapture++; discardRecording = true; if (recorder?.state === 'recording') recorder.stop(); releaseStream(); request?.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); clearReport(); });
+setReadingIndex(0); updateControls(); checkHealth();
 if (!usageAcknowledged) $('usage-dialog').showModal();

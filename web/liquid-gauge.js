@@ -3,11 +3,8 @@
 (() => {
   let nextId = 0;
   const instances = new WeakMap();
-  function color(value) {
-    const stops = [[46, 166, 119], [232, 183, 48], [219, 76, 76]];
-    const half = value <= .5 ? 0 : 1, fraction = half === 0 ? value * 2 : (value - .5) * 2;
-    return `rgb(${stops[half].map((channel, i) => Math.round(channel + (stops[half + 1][i] - channel) * fraction)).join(', ')})`;
-  }
+  // Color stays neutral: the score has no validated risk bands.
+  function color() { return 'rgb(40, 123, 193)'; }
   function wavePath(value, phase) {
     // Interior runs from y=10 to y=230. Taper the wave at empty/full endpoints.
     const level = 230 - value * 220;
